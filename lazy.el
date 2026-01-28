@@ -173,7 +173,7 @@
   `(prog1 (lazy-car ,stream)
      (setq ,stream (lazy-cdr ,stream))))
 
-(defun lazy-elt (stream n)
+(defun lazy-elt (n stream)
   "Return the Nth element of STREAM (0-indexed)."
   (while (> n 0)
     (setq stream (lazy-cdr stream))
@@ -220,7 +220,7 @@
       (push elt list))
     (nreverse list)))
 
-(defun lazy-take (stream n)
+(defun lazy-take (n stream)
   "Take the first N elements from STREAM."
   (when (< n 0) (setq n 0))
   (lazy
@@ -228,9 +228,9 @@
            (lazy-null stream))
        (lazy-nil)
      (lazy-cons (lazy-car stream)
-                (lazy-take (lazy-cdr stream) (1- n))))))
+                (lazy-take (1- n) (lazy-cdr stream))))))
 
-(defun lazy-drop (stream n)
+(defun lazy-drop (n stream)
   "Drop the first N elements from STREAM and return the rest."
   (when (< n 0) (setq n 0))
   (if (null stream)
@@ -267,13 +267,13 @@
        (lazy-cons (lazy-car stream)
                   (lazy-cdr stream))))))
 
-(defun lazy-subseq (stream start &optional end)
+(defun lazy-subseq (start end stream)
   "Return a subsequence of STREAM from START to END."
   (when (or (< start 0) (and end (< end 0)))
     (error "Lazy-subseq: only non-negative indexes allowed for streams"))
-  (let ((stream-from-start (lazy-drop stream start)))
+  (let ((stream-from-start (lazy-drop start stream)))
     (if end
-        (lazy-take stream-from-start (- end start))
+        (lazy-take (- end start) stream-from-start)
       stream-from-start)))
 
 (defun lazy-map (function stream)
@@ -284,9 +284,8 @@
      (lazy-cons (funcall function (lazy-car stream))
                 (lazy-map function (lazy-cdr stream))))))
 
-(defun lazy-mapn (function stream &rest streams)
-  "Apply FUNCTION to elements from STREAM and STREAMS in parallel."
-  (setq streams (cons stream streams))
+(defun lazy-mapn (function &rest streams)
+  "Apply FUNCTION to elements from STREAMS in parallel."
   (lazy
    (if (not (cl-every (lambda (x) (not (lazy-null x)))
                       streams))
@@ -310,16 +309,37 @@
   (lazy-filter (lambda (elt) (not (funcall pred elt)))
                stream))
 
-(defun lazy-reduce (function stream initial-value)
-  "Reduce STREAM using FUNCTION with INITIAL-VALUE as accumulator."
-  (if (lazy-null stream)
-      initial-value
-    (let ((acc initial-value))
-      (lazy-dostream (elt stream)
-        (setq acc (funcall function acc elt)))
-      acc)))
+(defun lazy-reduce (function &rest args)
+  "Reduce STREAM using FUNCTION with ARGS.
+With 2 args: (lazy-reduce function stream)
+With 3 args: (lazy-reduce function initial-value stream)"
+  (let ((stream (if (= (length args) 1)
+                    (car args)
+                  (cadr args)))
+        (initial-value (if (= (length args) 1)
+                          nil
+                        (car args)))
+        (has-initial (= (length args) 2)))
+    (cond
+     ((and (not has-initial) (lazy-null stream))
+      (funcall function))
+     ((and (not has-initial) (lazy-null (lazy-cdr stream)))
+      (lazy-car stream))
+     (has-initial
+      (if (lazy-null stream)
+          initial-value
+        (let ((acc initial-value))
+          (lazy-dostream (elt stream)
+            (setq acc (funcall function acc elt)))
+          acc)))
+     (t
+      (let ((acc (lazy-car stream)))
+        (setq stream (lazy-cdr stream))
+        (lazy-dostream (elt stream)
+          (setq acc (funcall function acc elt)))
+        acc)))))
 
-(defun lazy-reduce-while (pred function stream initial-value)
+(defun lazy-reduce-while (pred function initial-value stream)
   "Reduce STREAM with FUNCTION while PRED hold."
   (if (lazy-null stream)
       initial-value
@@ -407,21 +427,21 @@ Return DEFAULT if not found."
                               (lambda (x) (equal x first))
                               (lazy-cdr stream))))))))
 
-(defun lazy-reductions (function stream initial-value)
-  "Return a stream of successive reductions of STREAM with FUNCTION."
+(defun lazy-reductions (function initial-value stream)
+  "Return a stream of successive reductions of STREAM with FUNCTION and INITIAL-VALUE."
   (lazy
    (if (lazy-null stream)
        (lazy-cons initial-value (lazy-nil))
      (lazy-cons initial-value
                (lazy-reductions function
-                              (lazy-cdr stream)
                               (funcall function initial-value
-                                      (lazy-car stream)))))))
+                                      (lazy-car stream))
+                              (lazy-cdr stream))))))
 
-(defun lazy-split-at (stream n)
+(defun lazy-split-at (n stream)
   "Split STREAM at position N, returning (BEFORE . AFTER)."
-  (cons (lazy-take stream n)
-        (lazy-drop stream n)))
+  (cons (lazy-take n stream)
+        (lazy-drop n stream)))
 
 (defun lazy-split-with (pred stream)
   "Split STREAM where PRED change from true to false."
@@ -436,14 +456,14 @@ Return DEFAULT if not found."
                (funcall function index elt))
              stream)))
 
-(defun lazy-take-nth (stream n)
+(defun lazy-take-nth (n stream)
   "Take every Nth element from STREAM."
   (when (< n 1) (error "N must be positive"))
   (lazy
    (if (lazy-null stream)
        (lazy-nil)
      (lazy-cons (lazy-car stream)
-               (lazy-take-nth (lazy-drop stream n) n)))))
+               (lazy-take-nth n (lazy-drop n stream))))))
 
 (defun lazy-some (pred stream)
   "Return the first truthy result of PRED applied to STREAM elements."
@@ -472,13 +492,13 @@ Return DEFAULT if not found."
            (lazy-cons result (lazy-keep function (lazy-cdr stream)))
          (lazy-keep function (lazy-cdr stream)))))))
 
-(defun lazy-partition (stream n)
+(defun lazy-partition (n stream)
   "Partition STREAM into chunks of size N."
   (when (< n 1) (error "N must be positive"))
   (lazy
-   (let ((chunk (lazy-into-list (lazy-take stream n))))
+   (let ((chunk (lazy-into-list (lazy-take n stream))))
      (if (= (length chunk) n)
-         (lazy-cons chunk (lazy-partition (lazy-drop stream n) n))
+         (lazy-cons chunk (lazy-partition n (lazy-drop n stream)))
        (lazy-nil)))))
 
 (defun lazy-partition-by (function stream)
@@ -494,7 +514,7 @@ Return DEFAULT if not found."
                             (lazy-cdr stream)))))
        (lazy-cons (lazy-into-list run)
                  (lazy-partition-by function
-                                   (lazy-drop stream (lazy-length run))))))))
+                                   (lazy-drop (lazy-length run) stream)))))))
 
 (defun lazy-flatten (stream)
   "Flatten one level of nesting in STREAM."

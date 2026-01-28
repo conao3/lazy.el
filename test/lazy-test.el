@@ -12,19 +12,19 @@
 (ert-deftest lazy-test-error-check ()
   (should (null (lazy-into-list (lazy-seq-range 10 5))))
 
-  (should (null (lazy-into-list (lazy-take (lazy-seq-range) -1))))
+  (should (null (lazy-into-list (lazy-take -1 (lazy-seq-range)))))
 
-  (should (null (lazy-into-list (lazy-take (lazy-drop (lazy-seq-range) -1) 0))))
+  (should (null (lazy-into-list (lazy-take 0 (lazy-drop -1 (lazy-seq-range))))))
 
   (should (lazy-stream-p (lazy-seq-range)))
 
   (should (null (lazy-stream-p [1]))))
 
 (ert-deftest lazy-test-append ()
-  (should (equal (lazy-into-list (lazy-append (lazy-take (lazy-seq-range) 3) (lazy-take (lazy-seq-range) 3)))
+  (should (equal (lazy-into-list (lazy-append (lazy-take 3 (lazy-seq-range)) (lazy-take 3 (lazy-seq-range))))
                  '(0 1 2 0 1 2)))
 
-  (should (equal (lazy-into-list (lazy-take (lazy-append (lazy-seq-range 0 3) (lazy-seq-range)) 6))
+  (should (equal (lazy-into-list (lazy-take 6 (lazy-append (lazy-seq-range 0 3) (lazy-seq-range))))
                  '(0 1 2 0 1 2)))
 
   (should (equal (lazy-into-list (lazy-append))
@@ -35,45 +35,42 @@
                  '(0 1 2))))
 
 (ert-deftest lazy-test-subseq ()
-  (should (equal (lazy-into-list (lazy-subseq (lazy-seq-range) 5 10))
+  (should (equal (lazy-into-list (lazy-subseq 5 10 (lazy-seq-range)))
                  '(5 6 7 8 9))))
 
 (ert-deftest lazy-test-mapn ()
-  (should (equal (lazy-into-list (lazy-take (lazy-mapn #'string
-                                                 (lazy-seq-range ?A)
-                                                 (lazy-seq-range ?a)
-                                                 (lazy-seq-range ?0))
-                                        10))
+  (should (equal (lazy-into-list (lazy-take 10 (lazy-mapn #'string
+                                                     (lazy-seq-range ?A)
+                                                     (lazy-seq-range ?a)
+                                                     (lazy-seq-range ?0))))
                  '("Aa0" "Bb1" "Cc2" "Dd3" "Ee4" "Ff5" "Gg6" "Hh7" "Ii8" "Jj9"))))
 
 (ert-deftest lazy-test-concat ()
-  (should (equal (lazy-into-list (lazy-take (lazy-concat (lazy-cons (lazy-seq-range 0 3)
-                                                                (lazy-cons (lazy-seq-range 10 13)
-                                                                          (lazy-nil))))
-                                        6))
+  (should (equal (lazy-into-list (lazy-take 6 (lazy-concat (lazy-cons (lazy-seq-range 0 3)
+                                                                  (lazy-cons (lazy-seq-range 10 13)
+                                                                            (lazy-nil))))))
                  '(0 1 2 10 11 12))))
 
 (ert-deftest lazy-test-interleave ()
-  (should (equal (lazy-into-list (lazy-take (lazy-interleave (lazy-seq-range 0 3)
-                                                        (lazy-seq-range 10 13))
-                                        6))
+  (should (equal (lazy-into-list (lazy-take 6 (lazy-interleave (lazy-seq-range 0 3)
+                                                          (lazy-seq-range 10 13))))
                  '(0 10 1 11 2 12))))
 
 (ert-deftest lazy-test-cycle ()
-  (should (equal (lazy-into-list (lazy-take (lazy-cycle (lazy-seq-range 0 3)) 10))
+  (should (equal (lazy-into-list (lazy-take 10 (lazy-cycle (lazy-seq-range 0 3))))
                  '(0 1 2 0 1 2 0 1 2 0))))
 
 (ert-deftest lazy-test-repeat ()
-  (should (equal (lazy-into-list (lazy-take (lazy-repeat 42) 5))
+  (should (equal (lazy-into-list (lazy-take 5 (lazy-repeat 42)))
                  '(42 42 42 42 42))))
 
 (ert-deftest lazy-test-repeatedly ()
   (let ((counter 0))
-    (should (equal (lazy-into-list (lazy-take (lazy-repeatedly (lambda () (setq counter (1+ counter)))) 5))
+    (should (equal (lazy-into-list (lazy-take 5 (lazy-repeatedly (lambda () (setq counter (1+ counter))))))
                    '(1 2 3 4 5)))))
 
 (ert-deftest lazy-test-iterate ()
-  (should (equal (lazy-into-list (lazy-take (lazy-iterate (lambda (x) (* x 2)) 1) 5))
+  (should (equal (lazy-into-list (lazy-take 5 (lazy-iterate (lambda (x) (* x 2)) 1)))
                  '(1 2 4 8 16))))
 
 (ert-deftest lazy-test-distinct ()
@@ -84,12 +81,20 @@
   (should (equal (lazy-into-list (lazy-dedupe (lazy-cons 1 (lazy-cons 1 (lazy-cons 2 (lazy-cons 2 (lazy-cons 3 (lazy-nil))))))))
                  '(1 2 3))))
 
+(ert-deftest lazy-test-reduce ()
+  (should (= (lazy-reduce #'+ 0 (lazy-seq-range 1 5))
+             10))
+  (should (= (lazy-reduce #'+ (lazy-seq-range 1 5))
+             10))
+  (should (= (lazy-reduce #'+ (lazy-cons 42 (lazy-nil)))
+             42)))
+
 (ert-deftest lazy-test-reductions ()
-  (should (equal (lazy-into-list (lazy-reductions #'+ (lazy-seq-range 1 5) 0))
+  (should (equal (lazy-into-list (lazy-reductions #'+ 0 (lazy-seq-range 1 5)))
                  '(0 1 3 6 10))))
 
 (ert-deftest lazy-test-split-at ()
-  (let ((result (lazy-split-at (lazy-seq-range 0 10) 5)))
+  (let ((result (lazy-split-at 5 (lazy-seq-range 0 10))))
     (should (equal (lazy-into-list (car result))
                    '(0 1 2 3 4)))
     (should (equal (lazy-into-list (cdr result))
@@ -103,13 +108,12 @@
                    '(5 6 7 8 9)))))
 
 (ert-deftest lazy-test-map-indexed ()
-  (should (equal (lazy-into-list (lazy-take (lazy-map-indexed (lambda (i x) (list i x))
-                                                         (lazy-seq-range 10 15))
-                                        3))
+  (should (equal (lazy-into-list (lazy-take 3 (lazy-map-indexed (lambda (i x) (list i x))
+                                                           (lazy-seq-range 10 15))))
                  '((0 10) (1 11) (2 12)))))
 
 (ert-deftest lazy-test-take-nth ()
-  (should (equal (lazy-into-list (lazy-take-nth (lazy-seq-range 0 10) 2))
+  (should (equal (lazy-into-list (lazy-take-nth 2 (lazy-seq-range 0 10)))
                  '(0 2 4 6 8))))
 
 (ert-deftest lazy-test-some ()
@@ -127,9 +131,9 @@
                  '(0 2 4 6 8))))
 
 (ert-deftest lazy-test-partition ()
-  (should (equal (lazy-into-list (lazy-partition (lazy-seq-range 0 10) 3))
+  (should (equal (lazy-into-list (lazy-partition 3 (lazy-seq-range 0 10)))
                  '((0 1 2) (3 4 5) (6 7 8))))
-  (should (equal (lazy-into-list (lazy-partition (lazy-seq-range 0 5) 2))
+  (should (equal (lazy-into-list (lazy-partition 2 (lazy-seq-range 0 5)))
                  '((0 1) (2 3)))))
 
 (ert-deftest lazy-test-partition-by ()
