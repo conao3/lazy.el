@@ -30,7 +30,7 @@
             snapshot = emacs-ci-pkgs.emacs-snapshot;
           };
 
-          makeCheck =
+          makeTest =
             version: emacs:
             pkgs.runCommand "lazy-el-test-${version}"
               {
@@ -53,7 +53,7 @@
             programs.nixfmt.enable = true;
           };
 
-          checks = pkgs.lib.mapAttrs makeCheck emacsVersions;
+          checks = pkgs.lib.mapAttrs (version: emacs: makeTest version emacs) emacsVersions;
 
           devShells.default = pkgs.mkShell {
             packages = [

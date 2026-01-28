@@ -39,6 +39,16 @@ Run all tests across all Emacs versions:
 nix flake check
 ```
 
+Test with a specific Emacs version:
+
+```bash
+nix build -L .#checks.x86_64-linux.27-2
+nix build -L .#checks.x86_64-linux.28-2
+nix build -L .#checks.x86_64-linux.29-4
+nix build -L .#checks.x86_64-linux.30-1
+nix build -L .#checks.x86_64-linux.snapshot
+```
+
 Format Nix files:
 
 ```bash
