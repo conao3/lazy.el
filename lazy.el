@@ -1,8 +1,10 @@
 ;;; lazy.el --- Lazy evaluation library              -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2018  chuntaro
+;; Copyright (C) 2026  conao3
 
 ;; Author: chuntaro <chuntaro@sakura-games.jp>
+;; Maintainer: conao3 <conao3@gmail.com>
 ;; URL: https://github.com/chuntaro/lazy.el
 ;; Package-Requires: ((emacs "25"))
 ;; Keywords: lisp, lazy
