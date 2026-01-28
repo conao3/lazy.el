@@ -182,11 +182,13 @@
 
 (defun lazy-length (stream)
   "Return the length of STREAM."
-  (let ((len 0))
-    (while (not (lazy-null stream))
-      (setq len (1+ len)
-            stream (lazy-cdr stream)))
-    len))
+  (if (null stream)
+      0
+    (let ((len 0))
+      (while (not (lazy-null stream))
+        (setq len (1+ len)
+              stream (lazy-cdr stream)))
+      len)))
 
 (defun lazy-stream-p (stream)
   "Return t if STREAM is a lazy stream."
@@ -231,32 +233,39 @@
 (defun lazy-drop (stream n)
   "Drop the first N elements from STREAM and return the rest."
   (when (< n 0) (setq n 0))
-  (lazy
-   (while (not (or (lazy-null stream)
-                   (zerop n)))
-     (setq n (1- n))
-     (setq stream (lazy-cdr stream)))
-   (if (lazy-null stream)
-       (lazy-nil)
-     (lazy-cons (lazy-car stream) (lazy-cdr stream)))))
+  (if (null stream)
+      (lazy-nil)
+    (lazy
+     (while (not (or (lazy-null stream)
+                     (zerop n)))
+       (setq n (1- n))
+       (setq stream (lazy-cdr stream)))
+     (if (lazy-null stream)
+         (lazy-nil)
+       (lazy-cons (lazy-car stream) (lazy-cdr stream))))))
 
 (defun lazy-take-while (pred stream)
   "Take elements from STREAM while PRED hold."
-  (lazy
-   (if (not (funcall pred (lazy-car stream)))
-       (lazy-nil)
-     (lazy-cons (lazy-car stream)
-                (lazy-take-while pred (lazy-cdr stream))))))
+  (if (or (null stream) (lazy-null stream))
+      (lazy-nil)
+    (lazy
+     (if (not (funcall pred (lazy-car stream)))
+         (lazy-nil)
+       (lazy-cons (lazy-car stream)
+                  (lazy-take-while pred (lazy-cdr stream)))))))
 
 (defun lazy-drop-while (pred stream)
   "Drop elements from STREAM while PRED hold."
-  (lazy
-   (while (not (or (lazy-null stream)
-                   (funcall pred (lazy-car stream))))
-     (setq stream (lazy-cdr stream)))
-   (unless (lazy-null stream)
-     (lazy-cons (lazy-car stream)
-                (lazy-cdr stream)))))
+  (if (null stream)
+      (lazy-nil)
+    (lazy
+     (while (and (not (lazy-null stream))
+                 (funcall pred (lazy-car stream)))
+       (setq stream (lazy-cdr stream)))
+     (if (lazy-null stream)
+         (lazy-nil)
+       (lazy-cons (lazy-car stream)
+                  (lazy-cdr stream))))))
 
 (defun lazy-subseq (stream start &optional end)
   "Return a subsequence of STREAM from START to END."
@@ -330,6 +339,172 @@ Return DEFAULT if not found."
       (when (funcall pred elt)
         (throw 'lazy--break elt)))
     default))
+
+(defun lazy-concat (streams)
+  "Concatenate a stream of STREAMS into a single stream."
+  (lazy
+   (if (lazy-null streams)
+       (lazy-nil)
+     (let ((first (lazy-car streams)))
+       (if (lazy-null first)
+           (lazy-concat (lazy-cdr streams))
+         (lazy-cons (lazy-car first)
+                   (lazy-concat (lazy-cons (lazy-cdr first)
+                                          (lazy-cdr streams)))))))))
+
+(defun lazy-interleave (&rest streams)
+  "Interleave elements from STREAMS."
+  (setq streams (cl-remove-if #'lazy-null streams))
+  (lazy
+   (if (null streams)
+       (lazy-nil)
+     (lazy-cons (lazy-car (car streams))
+               (apply #'lazy-interleave
+                      (append (cdr streams)
+                              (list (lazy-cdr (car streams)))))))))
+
+(defun lazy-cycle (stream)
+  "Repeat STREAM infinitely."
+  (let ((original stream))
+    (lazy
+     (cl-labels ((cycle-helper (s)
+                   (if (lazy-null s)
+                       (cycle-helper original)
+                     (lazy-cons (lazy-car s)
+                               (cycle-helper (lazy-cdr s))))))
+       (cycle-helper stream)))))
+
+(defun lazy-repeat (x)
+  "Create an infinite stream of X."
+  (lazy (lazy-cons x (lazy-repeat x))))
+
+(defun lazy-repeatedly (function)
+  "Create an infinite stream by calling FUNCTION repeatedly."
+  (lazy (lazy-cons (funcall function)
+                  (lazy-repeatedly function))))
+
+(defun lazy-iterate (function x)
+  "Create an infinite stream by applying FUNCTION to X repeatedly."
+  (lazy (lazy-cons x (lazy-iterate function (funcall function x)))))
+
+(defun lazy-distinct (stream)
+  "Remove duplicate elements from STREAM."
+  (let ((seen (make-hash-table :test 'equal)))
+    (lazy-filter (lambda (elt)
+                  (unless (gethash elt seen)
+                    (puthash elt t seen)
+                    t))
+                stream)))
+
+(defun lazy-dedupe (stream)
+  "Remove consecutive duplicate elements from STREAM."
+  (lazy
+   (if (lazy-null stream)
+       (lazy-nil)
+     (let ((first (lazy-car stream)))
+       (lazy-cons first
+                 (lazy-dedupe (lazy-drop-while
+                              (lambda (x) (equal x first))
+                              (lazy-cdr stream))))))))
+
+(defun lazy-reductions (function stream initial-value)
+  "Return a stream of successive reductions of STREAM with FUNCTION."
+  (lazy
+   (if (lazy-null stream)
+       (lazy-cons initial-value (lazy-nil))
+     (lazy-cons initial-value
+               (lazy-reductions function
+                              (lazy-cdr stream)
+                              (funcall function initial-value
+                                      (lazy-car stream)))))))
+
+(defun lazy-split-at (stream n)
+  "Split STREAM at position N, returning (BEFORE . AFTER)."
+  (cons (lazy-take stream n)
+        (lazy-drop stream n)))
+
+(defun lazy-split-with (pred stream)
+  "Split STREAM where PRED change from true to false."
+  (cons (lazy-take-while pred stream)
+        (lazy-drop-while pred stream)))
+
+(defun lazy-map-indexed (function stream)
+  "Apply FUNCTION to index and each element of STREAM."
+  (let ((index -1))
+    (lazy-map (lambda (elt)
+               (setq index (1+ index))
+               (funcall function index elt))
+             stream)))
+
+(defun lazy-take-nth (stream n)
+  "Take every Nth element from STREAM."
+  (when (< n 1) (error "N must be positive"))
+  (lazy
+   (if (lazy-null stream)
+       (lazy-nil)
+     (lazy-cons (lazy-car stream)
+               (lazy-take-nth (lazy-drop stream n) n)))))
+
+(defun lazy-some (pred stream)
+  "Return the first truthy result of PRED applied to STREAM elements."
+  (catch 'lazy--break
+    (lazy-dostream (elt stream)
+      (let ((result (funcall pred elt)))
+        (when result
+          (throw 'lazy--break result))))
+    nil))
+
+(defun lazy-every (pred stream)
+  "Return t if PRED hold for all elements of STREAM."
+  (catch 'lazy--break
+    (lazy-dostream (elt stream)
+      (unless (funcall pred elt)
+        (throw 'lazy--break nil)))
+    t))
+
+(defun lazy-keep (function stream)
+  "Apply FUNCTION to elements of STREAM and keep non-nil results."
+  (lazy
+   (if (lazy-null stream)
+       (lazy-nil)
+     (let ((result (funcall function (lazy-car stream))))
+       (if result
+           (lazy-cons result (lazy-keep function (lazy-cdr stream)))
+         (lazy-keep function (lazy-cdr stream)))))))
+
+(defun lazy-partition (stream n)
+  "Partition STREAM into chunks of size N."
+  (when (< n 1) (error "N must be positive"))
+  (lazy
+   (let ((chunk (lazy-into-list (lazy-take stream n))))
+     (if (= (length chunk) n)
+         (lazy-cons chunk (lazy-partition (lazy-drop stream n) n))
+       (lazy-nil)))))
+
+(defun lazy-partition-by (function stream)
+  "Partition STREAM when FUNCTION result change."
+  (lazy
+   (if (lazy-null stream)
+       (lazy-nil)
+     (let* ((first (lazy-car stream))
+            (fval (funcall function first))
+            (run (lazy-cons first
+                           (lazy-take-while
+                            (lambda (x) (equal (funcall function x) fval))
+                            (lazy-cdr stream)))))
+       (lazy-cons (lazy-into-list run)
+                 (lazy-partition-by function
+                                   (lazy-drop stream (lazy-length run))))))))
+
+(defun lazy-flatten (stream)
+  "Flatten one level of nesting in STREAM."
+  (lazy
+   (if (lazy-null stream)
+       (lazy-nil)
+     (let ((first (lazy-car stream)))
+       (if (lazy-stream-p first)
+           (lazy-append first (lazy-flatten (lazy-cdr stream)))
+         (lazy-cons first (lazy-flatten (lazy-cdr stream))))))))
 
 ;; `cl-loop' support
 ;;

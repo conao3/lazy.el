@@ -55,6 +55,31 @@ Format Nix files:
 nix fmt
 ```
 
+# TODO
+
+## High Priority
+- [x] lazy-concat - Concatenate a stream of streams
+- [x] lazy-interleave - Interleave elements from multiple streams
+- [x] lazy-cycle - Repeat a finite stream infinitely
+- [x] lazy-repeat - Create an infinite stream of same value
+- [x] lazy-repeatedly - Create an infinite stream by calling function repeatedly
+- [x] lazy-iterate - Create an infinite stream by applying function repeatedly
+- [x] lazy-distinct - Remove duplicate elements
+- [x] lazy-dedupe - Remove consecutive duplicates
+- [x] lazy-reductions - Return stream of successive reductions
+- [x] lazy-split-at - Split stream at position N
+- [x] lazy-split-with - Split stream where predicate changes
+- [x] lazy-map-indexed - Map with index
+- [x] lazy-take-nth - Take every Nth element
+- [x] lazy-some - Find first truthy predicate result
+- [x] lazy-every - Check if predicate holds for all elements
+- [x] lazy-keep - Keep non-nil map results
+
+## Medium Priority
+- [x] lazy-partition - Partition stream into chunks
+- [x] lazy-partition-by - Partition when function result changes
+- [x] lazy-flatten - Flatten one level of nesting
+
 # History
 
 This library was originally written by chuntaro. Conao3 made some modifications to register it on MELPA. Thanks!
