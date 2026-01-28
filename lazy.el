@@ -25,7 +25,7 @@
 
 ;;; Commentary:
 
-;; Implementation of `SRFI 45' in Emacs Lisp and Stream functions.
+;; Implementation of `SRFI 45' in Emacs Lisp and Sequence functions.
 ;;
 ;; SRFI 45
 ;; https://srfi.schemers.org/srfi-45/srfi-45.html
@@ -118,14 +118,14 @@
 ;; (funcall get-count)                     ; =>   10
 
 
-;;; Stream functions
+;;; Sequence functions
 
 (defmacro lazy-cons (first rest)
-  "Construct a lazy coll with FIRST element and REST stream."
+  "Construct a lazy coll with FIRST element and REST sequence."
   `(lazy-delay (cons ,first ,rest)))
 
 (defsubst lazy-nil ()
-  "Return an empty stream."
+  "Return an empty sequence."
   (lazy-delay nil))
 
 (defsubst lazy-null (coll)
@@ -152,9 +152,9 @@
 (defalias 'lazy-rest 'lazy-cdr
   "Alias for `lazy-cdr'.")
 
-(defun lazy-append (&rest streams)
-  "Append STREAMS into a single lazy stream."
-  (lazy-concat (lazy-from-seq streams)))
+(defun lazy-append (&rest colls)
+  "Append COLLS into a single lazy sequence."
+  (lazy-concat (lazy-from-seq colls)))
 
 (defmacro lazy-pop (coll)
   "Pop and return the first element of COLL, modifying COLL."
@@ -194,8 +194,8 @@
               coll (lazy-cdr coll)))
       len)))
 
-(defun lazy-stream-p (coll)
-  "Return t if COLL is a lazy stream."
+(defun lazy-seq-p (coll)
+  "Return t if COLL is a lazy sequence."
   (and (consp coll)
        (consp (car coll))
        (memq (caar coll) '(lazy lazy-eager))
@@ -207,7 +207,7 @@
     (funcall function (lazy-car coll))
     (setq coll (lazy-cdr coll))))
 
-(defmacro lazy-dostream (spec &rest body)
+(defmacro lazy-doseq (spec &rest body)
   "Iterate over COLL in SPEC, executing BODY for each element."
   (declare (indent 1))
   `(lazy-do (lambda (,(car spec))
@@ -217,7 +217,7 @@
 (defun lazy-into-list (coll)
   "Convert COLL into a list."
   (let (list)
-    (lazy-dostream (elt coll)
+    (lazy-doseq (elt coll)
       (push elt list))
     (nreverse list)))
 
@@ -299,14 +299,14 @@
 (defun lazy-subseq (start end coll)
   "Return a subsequence of COLL from START to END."
   (when (or (< start 0) (and end (< end 0)))
-    (error "Lazy-subseq: only non-negative indexes allowed for streams"))
-  (let ((stream-from-start (lazy-drop start coll)))
+    (error "Lazy-subseq: only non-negative indexes allowed for sequences"))
+  (let ((coll-from-start (lazy-drop start coll)))
     (if end
-        (lazy-take (- end start) stream-from-start)
-      stream-from-start)))
+        (lazy-take (- end start) coll-from-start)
+      coll-from-start)))
 
 (defun lazy-map (function coll)
-  "Apply FUNCTION to each element of COLL, returning a new stream."
+  "Apply FUNCTION to each element of COLL, returning a new sequence."
   (lazy
    (if (lazy-null coll)
        (lazy-nil)
@@ -317,14 +317,14 @@
   "Apply FUNCTION to each element of COLL and concatenate results."
   (lazy-flatten (lazy-map function coll)))
 
-(defun lazy-mapn (function &rest streams)
-  "Apply FUNCTION to elements from STREAMS in parallel."
+(defun lazy-mapn (function &rest colls)
+  "Apply FUNCTION to elements from COLLS in parallel."
   (lazy
    (if (not (cl-every (lambda (x) (not (lazy-null x)))
-                      streams))
+                      colls))
        (lazy-nil)
-     (lazy-cons (apply function (mapcar #'lazy-car streams))
-                (apply #'lazy-mapn function (mapcar #'lazy-cdr streams))))))
+     (lazy-cons (apply function (mapcar #'lazy-car colls))
+                (apply #'lazy-mapn function (mapcar #'lazy-cdr colls))))))
 
 (defun lazy-filter (pred coll)
   "Filter COLL to elements where PRED hold."
@@ -362,13 +362,13 @@ With 3 args: (lazy-reduce function initial-value coll)"
       (if (lazy-null coll)
           initial-value
         (let ((acc initial-value))
-          (lazy-dostream (elt coll)
+          (lazy-doseq (elt coll)
             (setq acc (funcall function acc elt)))
           acc)))
      (t
       (let ((acc (lazy-car coll)))
         (setq coll (lazy-cdr coll))
-        (lazy-dostream (elt coll)
+        (lazy-doseq (elt coll)
           (setq acc (funcall function acc elt)))
         acc)))))
 
@@ -378,7 +378,7 @@ With 3 args: (lazy-reduce function initial-value coll)"
       initial-value
     (let ((acc initial-value))
       (catch 'lazy--break
-        (lazy-dostream (elt coll)
+        (lazy-doseq (elt coll)
           (setq acc (funcall function acc elt))
           (unless (funcall pred acc)
             (throw 'lazy--break nil))))
@@ -388,33 +388,33 @@ With 3 args: (lazy-reduce function initial-value coll)"
   "Find the first element in COLL where PRED hold.
 Return DEFAULT if not found."
   (catch 'lazy--break
-    (lazy-dostream (elt coll)
+    (lazy-doseq (elt coll)
       (when (funcall pred elt)
         (throw 'lazy--break elt)))
     default))
 
-(defun lazy-concat (streams)
-  "Concatenate a coll of STREAMS into a single stream."
+(defun lazy-concat (colls)
+  "Concatenate a coll of COLLS into a single sequence."
   (lazy
-   (if (lazy-null streams)
+   (if (lazy-null colls)
        (lazy-nil)
-     (let ((first (lazy-car streams)))
+     (let ((first (lazy-car colls)))
        (if (lazy-null first)
-           (lazy-concat (lazy-cdr streams))
+           (lazy-concat (lazy-cdr colls))
          (lazy-cons (lazy-car first)
                     (lazy-concat (lazy-cons (lazy-cdr first)
-                                            (lazy-cdr streams)))))))))
+                                            (lazy-cdr colls)))))))))
 
-(defun lazy-interleave (&rest streams)
-  "Interleave elements from STREAMS."
-  (setq streams (cl-remove-if #'lazy-null streams))
+(defun lazy-interleave (&rest colls)
+  "Interleave elements from COLLS."
+  (setq colls (cl-remove-if #'lazy-null colls))
   (lazy
-   (if (null streams)
+   (if (null colls)
        (lazy-nil)
-     (lazy-cons (lazy-car (car streams))
+     (lazy-cons (lazy-car (car colls))
                 (apply #'lazy-interleave
-                       (append (cdr streams)
-                               (list (lazy-cdr (car streams)))))))))
+                       (append (cdr colls)
+                               (list (lazy-cdr (car colls)))))))))
 
 (defun lazy-interpose (separator coll)
   "Insert SEPARATOR between elements of COLL."
@@ -511,7 +511,7 @@ Use FUNCTION and INITIAL-VALUE for the reduction."
 (defun lazy-some (pred coll)
   "Return the first truthy result of PRED applied to COLL elements."
   (catch 'lazy--break
-    (lazy-dostream (elt coll)
+    (lazy-doseq (elt coll)
       (let ((result (funcall pred elt)))
         (when result
           (throw 'lazy--break result))))
@@ -559,7 +559,7 @@ Use FUNCTION and INITIAL-VALUE for the reduction."
   "Group elements of COLL by the result of FUNCTION.
 Return an alist of (key . list-of-elements)."
   (let ((groups (make-hash-table :test 'equal)))
-    (lazy-dostream (elt coll)
+    (lazy-doseq (elt coll)
       (let* ((key (funcall function elt))
              (existing (gethash key groups)))
         (puthash key (cons elt existing) groups)))
@@ -575,7 +575,7 @@ Return an alist of (key . list-of-elements)."
    (if (lazy-null coll)
        (lazy-nil)
      (let ((first (lazy-car coll)))
-       (if (lazy-stream-p first)
+       (if (lazy-seq-p first)
            (lazy-append first (lazy-flatten (lazy-cdr coll)))
          (lazy-cons first (lazy-flatten (lazy-cdr coll))))))))
 
@@ -587,7 +587,7 @@ Return an alist of (key . list-of-elements)."
 (defvar cl--loop-args)
 
 (defmacro lazy--advance-for (conscell)
-  "Advance CONSCELL to the next element in the lazy stream."
+  "Advance CONSCELL to the next element in the lazy sequence."
   `(progn
      (setcar ,conscell (lazy-car (cdr ,conscell)))
      (setcdr ,conscell (lazy-cdr (cdr ,conscell)))
@@ -644,7 +644,7 @@ Return an alist of (key . list-of-elements)."
      (lazy-cons 0 (lazy-cons 1 (rec 0 1))))))
 
 (defun lazy-from-seq (seq &optional pred)
-  "Convert SEQ to a lazy stream.
+  "Convert SEQ to a lazy sequence.
 SEQ can be any sequence type (list, vector, string, etc.).
 If PRED is provided, take elements while PRED holds."
   (let ((coll (cl-typecase seq

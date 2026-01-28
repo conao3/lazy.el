@@ -1,7 +1,7 @@
 # lazy.el
 Lazy evaluation library for Emacs Lisp
 
-Implementation of `SRFI 45' in Emacs Lisp and Stream functions.
+Implementation of `SRFI 45' in Emacs Lisp and Lazy sequence functions.
 
 SRFI 45  
 https://srfi.schemers.org/srfi-45/srfi-45.html  
@@ -19,7 +19,7 @@ lazy.el provides lazy evaluation for Emacs Lisp based on SRFI 45. It implements 
 ### Basic Example
 
 ```elisp
-;; Create an infinite stream of natural numbers
+;; Create an infinite sequence of natural numbers
 (setq naturals (lazy-range))
 
 ;; Take first 5 elements
@@ -59,7 +59,7 @@ lazy.el uses Clojure-style data-last argument order, making it perfect for dash.
      lazy-into-list)
 ;;=> ((9 36 81) (144 225 324) (441 576 729))
 
-;; Combining multiple streams
+;; Combining multiple sequences
 (->> (list (lazy-range 0 5)
            (lazy-range 10 15)
            (lazy-range 20 25))
@@ -97,7 +97,7 @@ Create a lazy sequence of numbers from START to END by STEP.
 (lazy-into-list (lazy-range 0 10 2))
 ;;=> (0 2 4 6 8)
 
-;; Infinite stream
+;; Infinite sequence
 (lazy-into-list (lazy-take 5 (lazy-range)))
 ;;=> (0 1 2 3 4)
 ```
@@ -159,7 +159,7 @@ If PRED is provided, take elements while PRED holds.
 
 #### `(lazy-repeat x)`
 
-Create an infinite stream of X.
+Create an infinite sequence of X.
 
 ```elisp
 (lazy-into-list (lazy-take 5 (lazy-repeat 42)))
@@ -168,7 +168,7 @@ Create an infinite stream of X.
 
 #### `(lazy-repeatedly function)`
 
-Create an infinite stream by calling FUNCTION repeatedly.
+Create an infinite sequence by calling FUNCTION repeatedly.
 
 ```elisp
 (lazy-into-list (lazy-take 5 (lazy-repeatedly (lambda () (random 10)))))
@@ -177,7 +177,7 @@ Create an infinite stream by calling FUNCTION repeatedly.
 
 #### `(lazy-iterate function x)`
 
-Create an infinite stream by applying FUNCTION to X repeatedly.
+Create an infinite sequence by applying FUNCTION to X repeatedly.
 
 ```elisp
 (lazy-into-list (lazy-take 5 (lazy-iterate (lambda (x) (* x 2)) 1)))
@@ -226,11 +226,11 @@ Return a lazy sequence of lines from FILE.
 ;;=> ("127.0.0.1 localhost" "::1 localhost" ...)
 ```
 
-### From existing streams
+### From existing sequences
 
-#### `(lazy-cycle stream)`
+#### `(lazy-cycle coll)`
 
-Repeat STREAM infinitely.
+Repeat COLL infinitely.
 
 ```elisp
 (lazy-into-list (lazy-take 10 (lazy-cycle (lazy-range 0 3))))
@@ -243,72 +243,72 @@ Functions that transform lazy sequences into other lazy sequences.
 
 ### Taking and dropping elements
 
-#### `(lazy-take n stream)`
+#### `(lazy-take n coll)`
 
-Take the first N elements from STREAM.
+Take the first N elements from COLL.
 
 ```elisp
 (lazy-into-list (lazy-take 3 (lazy-range)))
 ;;=> (0 1 2)
 ```
 
-#### `(lazy-drop n stream)`
+#### `(lazy-drop n coll)`
 
-Drop the first N elements from STREAM and return the rest.
+Drop the first N elements from COLL and return the rest.
 
 ```elisp
 (lazy-into-list (lazy-take 3 (lazy-drop 5 (lazy-range))))
 ;;=> (5 6 7)
 ```
 
-#### `(lazy-take-while pred stream)`
+#### `(lazy-take-while pred coll)`
 
-Take elements from STREAM while PRED holds.
+Take elements from COLL while PRED holds.
 
 ```elisp
 (lazy-into-list (lazy-take-while (lambda (x) (< x 5)) (lazy-range)))
 ;;=> (0 1 2 3 4)
 ```
 
-#### `(lazy-drop-while pred stream)`
+#### `(lazy-drop-while pred coll)`
 
-Drop elements from STREAM while PRED holds.
+Drop elements from COLL while PRED holds.
 
 ```elisp
 (lazy-into-list (lazy-take 3 (lazy-drop-while (lambda (x) (< x 5)) (lazy-range))))
 ;;=> (5 6 7)
 ```
 
-#### `(lazy-butlast stream)`
+#### `(lazy-butlast coll)`
 
-Return STREAM without the last element.
+Return COLL without the last element.
 
 ```elisp
 (lazy-into-list (lazy-butlast (lazy-range 0 5)))
 ;;=> (0 1 2 3)
 ```
 
-#### `(lazy-drop-last n stream)`
+#### `(lazy-drop-last n coll)`
 
-Drop the last N elements from STREAM.
+Drop the last N elements from COLL.
 
 ```elisp
 (lazy-into-list (lazy-drop-last 2 (lazy-range 0 5)))
 ;;=> (0 1 2)
 ```
 
-#### `(lazy-take-last n stream)`
+#### `(lazy-take-last n coll)`
 
-Take the last N elements from STREAM.
+Take the last N elements from COLL.
 
 ```elisp
 (lazy-into-list (lazy-take-last 2 (lazy-range 0 5)))
 ;;=> (3 4)
 ```
 
-#### `(lazy-take-nth n stream)`
+#### `(lazy-take-nth n coll)`
 
-Take every Nth element from STREAM.
+Take every Nth element from COLL.
 
 ```elisp
 (lazy-into-list (lazy-take-nth 2 (lazy-range 0 10)))
@@ -317,9 +317,9 @@ Take every Nth element from STREAM.
 
 ### Subsequences
 
-#### `(lazy-subseq start end stream)`
+#### `(lazy-subseq start end coll)`
 
-Return a subsequence of STREAM from START to END.
+Return a subsequence of COLL from START to END.
 
 ```elisp
 (lazy-into-list (lazy-subseq 5 10 (lazy-range)))
@@ -328,18 +328,18 @@ Return a subsequence of STREAM from START to END.
 
 ### Mapping
 
-#### `(lazy-map function stream)`
+#### `(lazy-map function coll)`
 
-Apply FUNCTION to each element of STREAM, returning a new stream.
+Apply FUNCTION to each element of COLL, returning a new sequence.
 
 ```elisp
 (lazy-into-list (lazy-take 5 (lazy-map (lambda (x) (* x x)) (lazy-range 1))))
 ;;=> (1 4 9 16 25)
 ```
 
-#### `(lazy-mapcat function stream)`
+#### `(lazy-mapcat function coll)`
 
-Apply FUNCTION to each element of STREAM and concatenate results.
+Apply FUNCTION to each element of COLL and concatenate results.
 
 ```elisp
 (lazy-into-list
@@ -349,9 +349,9 @@ Apply FUNCTION to each element of STREAM and concatenate results.
 ;;=> (0 1 1 2 2 3)
 ```
 
-#### `(lazy-mapn function &rest streams)`
+#### `(lazy-mapn function &rest colls)`
 
-Apply FUNCTION to elements from STREAMS in parallel.
+Apply FUNCTION to elements from COLLS in parallel.
 
 ```elisp
 (lazy-into-list
@@ -363,9 +363,9 @@ Apply FUNCTION to elements from STREAMS in parallel.
 ;;=> (110 113 116)
 ```
 
-#### `(lazy-map-indexed function stream)`
+#### `(lazy-map-indexed function coll)`
 
-Apply FUNCTION to index and each element of STREAM.
+Apply FUNCTION to index and each element of COLL.
 
 ```elisp
 (lazy-into-list
@@ -377,9 +377,9 @@ Apply FUNCTION to index and each element of STREAM.
 
 ### Filtering
 
-#### `(lazy-filter pred stream)`
+#### `(lazy-filter pred coll)`
 
-Filter STREAM to elements where PRED holds.
+Filter COLL to elements where PRED holds.
 
 ```elisp
 (lazy-into-list
@@ -388,9 +388,9 @@ Filter STREAM to elements where PRED holds.
 ;;=> (0 2 4 6 8)
 ```
 
-#### `(lazy-remove pred stream)`
+#### `(lazy-remove pred coll)`
 
-Remove elements from STREAM where PRED holds.
+Remove elements from COLL where PRED holds.
 
 ```elisp
 (lazy-into-list
@@ -399,9 +399,9 @@ Remove elements from STREAM where PRED holds.
 ;;=> (1 3 5 7 9)
 ```
 
-#### `(lazy-keep function stream)`
+#### `(lazy-keep function coll)`
 
-Apply FUNCTION to elements of STREAM and keep non-nil results.
+Apply FUNCTION to elements of COLL and keep non-nil results.
 
 ```elisp
 (lazy-into-list
@@ -412,9 +412,9 @@ Apply FUNCTION to elements of STREAM and keep non-nil results.
 
 ### Removing duplicates
 
-#### `(lazy-distinct stream)`
+#### `(lazy-distinct coll)`
 
-Remove duplicate elements from STREAM.
+Remove duplicate elements from COLL.
 
 ```elisp
 (lazy-into-list
@@ -423,9 +423,9 @@ Remove duplicate elements from STREAM.
 ;;=> (1 2 3 4)
 ```
 
-#### `(lazy-dedupe stream)`
+#### `(lazy-dedupe coll)`
 
-Remove consecutive duplicate elements from STREAM.
+Remove consecutive duplicate elements from COLL.
 
 ```elisp
 (lazy-into-list
@@ -434,11 +434,11 @@ Remove consecutive duplicate elements from STREAM.
 ;;=> (1 2 3 2)
 ```
 
-### Combining streams
+### Combining sequences
 
-#### `(lazy-append &rest streams)`
+#### `(lazy-append &rest colls)`
 
-Append STREAMS into a single lazy sequence.
+Append COLLS into a single lazy sequence.
 
 ```elisp
 (lazy-into-list
@@ -447,9 +447,9 @@ Append STREAMS into a single lazy sequence.
 ;;=> (0 1 2 10 11 12)
 ```
 
-#### `(lazy-concat streams)`
+#### `(lazy-concat colls)`
 
-Concatenate a stream of STREAMS into a single stream.
+Concatenate a sequence of COLLS into a single sequence.
 
 ```elisp
 (lazy-into-list
@@ -461,9 +461,9 @@ Concatenate a stream of STREAMS into a single stream.
 ;;=> (0 1 2 10 11 12)
 ```
 
-#### `(lazy-interleave &rest streams)`
+#### `(lazy-interleave &rest colls)`
 
-Interleave elements from STREAMS.
+Interleave elements from COLLS.
 
 ```elisp
 (lazy-into-list
@@ -473,9 +473,9 @@ Interleave elements from STREAMS.
 ;;=> (0 10 1 11 2 12)
 ```
 
-#### `(lazy-interpose separator stream)`
+#### `(lazy-interpose separator coll)`
 
-Insert SEPARATOR between elements of STREAM.
+Insert SEPARATOR between elements of COLL.
 
 ```elisp
 (lazy-into-list
@@ -483,9 +483,9 @@ Insert SEPARATOR between elements of STREAM.
 ;;=> (0 :sep 1 :sep 2)
 ```
 
-#### `(lazy-flatten stream)`
+#### `(lazy-flatten coll)`
 
-Flatten one level of nesting in STREAM.
+Flatten one level of nesting in COLL.
 
 ```elisp
 (lazy-into-list
@@ -503,18 +503,18 @@ Flatten one level of nesting in STREAM.
 
 ### Partitioning
 
-#### `(lazy-partition n stream)`
+#### `(lazy-partition n coll)`
 
-Partition STREAM into chunks of size N.
+Partition COLL into chunks of size N.
 
 ```elisp
 (lazy-into-list (lazy-partition 3 (lazy-range 0 10)))
 ;;=> ((0 1 2) (3 4 5) (6 7 8))
 ```
 
-#### `(lazy-partition-by function stream)`
+#### `(lazy-partition-by function coll)`
 
-Partition STREAM when FUNCTION result changes.
+Partition COLL when FUNCTION result changes.
 
 ```elisp
 (lazy-into-list
@@ -525,9 +525,9 @@ Partition STREAM when FUNCTION result changes.
 
 ### Reduction with intermediate results
 
-#### `(lazy-reductions function initial-value stream)`
+#### `(lazy-reductions function initial-value coll)`
 
-Return a stream of successive reductions of STREAM.
+Return a sequence of successive reductions of COLL.
 
 ```elisp
 (lazy-into-list
@@ -541,18 +541,18 @@ Functions that consume lazy sequences and return values.
 
 ### Accessing elements
 
-#### `(lazy-elt n stream)`
+#### `(lazy-elt n coll)`
 
-Return the Nth element of STREAM (0-indexed).
+Return the Nth element of COLL (0-indexed).
 
 ```elisp
 (lazy-elt 5 (lazy-range))
 ;;=> 5
 ```
 
-#### `(lazy-second stream)`
+#### `(lazy-second coll)`
 
-Return the second element of STREAM.
+Return the second element of COLL.
 
 ```elisp
 (lazy-second (lazy-range 10 20))
@@ -561,7 +561,7 @@ Return the second element of STREAM.
 
 #### `lazy-pop`
 
-Pop and return the first element of STREAM, modifying STREAM.
+Pop and return the first element of COLL, modifying COLL.
 
 ```elisp
 (setq s (lazy-range))
@@ -572,47 +572,47 @@ Pop and return the first element of STREAM, modifying STREAM.
 
 ### Length
 
-#### `(lazy-length stream)`
+#### `(lazy-length coll)`
 
-Return the length of STREAM.
+Return the length of COLL.
 
 ```elisp
 (lazy-length (lazy-range 0 10))
 ;;=> 10
 ```
 
-#### `(lazy-bounded-length n stream)`
+#### `(lazy-bounded-length n coll)`
 
-Return N if STREAM has at least N items, else the count of STREAM.
-Safe for infinite streams.
+Return N if COLL has at least N items, else the count of COLL.
+Safe for infinite sequences.
 
 ```elisp
 (lazy-bounded-length 10 (lazy-range 0 5))
 ;;=> 5
 
 (lazy-bounded-length 5 (lazy-range))
-;;=> 5  ; stops at 5 even for infinite stream
+;;=> 5  ; stops at 5 even for infinite sequence
 ```
 
 ### Type checking
 
-#### `(lazy-stream-p stream)`
+#### `(lazy-seq-p coll)`
 
-Return t if STREAM is a lazy sequence.
+Return t if COLL is a lazy sequence.
 
 ```elisp
-(lazy-stream-p (lazy-range))
+(lazy-seq-p (lazy-range))
 ;;=> t
 
-(lazy-stream-p '(1 2 3))
+(lazy-seq-p '(1 2 3))
 ;;=> nil
 ```
 
 ### Converting to lists
 
-#### `(lazy-into-list stream)`
+#### `(lazy-into-list coll)`
 
-Convert STREAM into a list.
+Convert COLL into a list.
 
 ```elisp
 (lazy-into-list (lazy-range 0 5))
@@ -621,21 +621,21 @@ Convert STREAM into a list.
 
 ### Side effects
 
-#### `(lazy-do function stream)`
+#### `(lazy-do function coll)`
 
-Apply FUNCTION to each element of STREAM for side effects.
+Apply FUNCTION to each element of COLL for side effects.
 
 ```elisp
 (lazy-do #'print (lazy-range 0 3))
 ;; Prints: 0 1 2
 ```
 
-#### `lazy-dostream`
+#### `lazy-doseq`
 
-Iterate over STREAM, executing BODY for each element.
+Iterate over COLL, executing BODY for each element.
 
 ```elisp
-(lazy-dostream (x (lazy-range 0 3))
+(lazy-doseq (x (lazy-range 0 3))
   (message "Value: %s" x))
 ;; Prints: "Value: 0" "Value: 1" "Value: 2"
 ```
@@ -644,10 +644,10 @@ Iterate over STREAM, executing BODY for each element.
 
 #### `(lazy-reduce function &rest args)`
 
-Reduce STREAM using FUNCTION.
+Reduce COLL using FUNCTION.
 
-With 2 args: `(lazy-reduce function stream)`
-With 3 args: `(lazy-reduce function initial-value stream)`
+With 2 args: `(lazy-reduce function coll)`
+With 3 args: `(lazy-reduce function initial-value coll)`
 
 ```elisp
 (lazy-reduce #'+ (lazy-range 1 5))
@@ -660,9 +660,9 @@ With 3 args: `(lazy-reduce function initial-value stream)`
 ;;=> 42
 ```
 
-#### `(lazy-reduce-while pred function initial-value stream)`
+#### `(lazy-reduce-while pred function initial-value coll)`
 
-Reduce STREAM while PRED holds.
+Reduce COLL while PRED holds.
 
 ```elisp
 (lazy-reduce-while (lambda (acc x) (< acc 10))
@@ -674,9 +674,9 @@ Reduce STREAM while PRED holds.
 
 ### Searching
 
-#### `(lazy-find pred stream &optional default)`
+#### `(lazy-find pred coll &optional default)`
 
-Find the first element in STREAM where PRED holds.
+Find the first element in COLL where PRED holds.
 
 ```elisp
 (lazy-find (lambda (x) (> x 5)) (lazy-range))
@@ -686,9 +686,9 @@ Find the first element in STREAM where PRED holds.
 ;;=> not-found
 ```
 
-#### `(lazy-some pred stream)`
+#### `(lazy-some pred coll)`
 
-Return the first truthy result of PRED applied to STREAM elements.
+Return the first truthy result of PRED applied to COLL elements.
 
 ```elisp
 (lazy-some (lambda (x) (and (> x 5) x)) (lazy-range 0 10))
@@ -698,9 +698,9 @@ Return the first truthy result of PRED applied to STREAM elements.
 ;;=> nil
 ```
 
-#### `(lazy-every pred stream)`
+#### `(lazy-every pred coll)`
 
-Return t if PRED holds for all elements of STREAM.
+Return t if PRED holds for all elements of COLL.
 
 ```elisp
 (lazy-every (lambda (x) (>= x 0)) (lazy-range 0 10))
@@ -712,9 +712,9 @@ Return t if PRED holds for all elements of STREAM.
 
 ### Splitting
 
-#### `(lazy-split-at n stream)`
+#### `(lazy-split-at n coll)`
 
-Split STREAM at position N, returning (BEFORE . AFTER).
+Split COLL at position N, returning (BEFORE . AFTER).
 
 ```elisp
 (let ((result (lazy-split-at 5 (lazy-range 0 10))))
@@ -723,9 +723,9 @@ Split STREAM at position N, returning (BEFORE . AFTER).
 ;;=> ((0 1 2 3 4) (5 6 7 8 9))
 ```
 
-#### `(lazy-split-with pred stream)`
+#### `(lazy-split-with pred coll)`
 
-Split STREAM where PRED changes from true to false.
+Split COLL where PRED changes from true to false.
 
 ```elisp
 (let ((result (lazy-split-with (lambda (x) (< x 5))
@@ -737,9 +737,9 @@ Split STREAM where PRED changes from true to false.
 
 ### Grouping
 
-#### `(lazy-group-by function stream)`
+#### `(lazy-group-by function coll)`
 
-Group elements of STREAM by the result of FUNCTION.
+Group elements of COLL by the result of FUNCTION.
 Return an alist of (key . list-of-elements).
 
 ```elisp
@@ -785,7 +785,7 @@ Similar to `lazy` but for compatibility.
 
 Force evaluation of a lazy PROMISE, memoizing the result.
 
-### Stream construction
+### Sequence construction
 
 #### `lazy-cons`
 
@@ -799,7 +799,7 @@ Construct a lazy sequence with FIRST and REST.
 
 #### `lazy-nil`, `lazy-null`
 
-Empty stream and predicate to test for empty stream.
+Empty sequence and predicate to test for empty sequence.
 
 ```elisp
 (lazy-null (lazy-nil))  ; => t

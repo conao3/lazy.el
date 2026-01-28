@@ -15,9 +15,9 @@
 
   (should (null (lazy-into-list (lazy-take 0 (lazy-drop -1 (lazy-range))))))
 
-  (should (lazy-stream-p (lazy-range)))
+  (should (lazy-seq-p (lazy-range)))
 
-  (should (null (lazy-stream-p [1]))))
+  (should (null (lazy-seq-p [1]))))
 
 (ert-deftest lazy-test-append ()
   (should (equal (lazy-into-list (lazy-append (lazy-take 3 (lazy-range)) (lazy-take 3 (lazy-range))))
