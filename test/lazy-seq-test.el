@@ -36,12 +36,6 @@
   (should (equal (cl-loop repeat 10 for i lazy-by (lazy-seq-primes) collect i)
                  '(2 3 5 7 11 13 17 19 23 29))))
 
-(ert-deftest lazy-seq-test-naturals ()
-  (should (equal (lazy-into-list (lazy-take 5 (lazy-seq-naturals)))
-                 '(1 2 3 4 5)))
-  (should (equal (lazy-into-list (lazy-take 5 (lazy-seq-naturals 10)))
-                 '(10 11 12 13 14))))
-
 (ert-deftest lazy-seq-test-from-list ()
   (should (equal (lazy-into-list (lazy-seq-from-list '(1 2 3 4 5)))
                  '(1 2 3 4 5)))

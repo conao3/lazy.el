@@ -61,11 +61,6 @@
                             (rec b (+ a b)))))
      (lazy-cons 0 (lazy-cons 1 (rec 0 1))))))
 
-(defun lazy-seq-naturals (&optional start)
-  "Return an infinite lazy stream of natural numbers starting from START.
-If START is not provided, starts from 1."
-  (lazy-seq-range (or start 1)))
-
 (defun lazy-seq-from-list (list)
   "Convert LIST to a lazy stream."
   (if (null list)
