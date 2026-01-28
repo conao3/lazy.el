@@ -160,3 +160,34 @@
                                                      (lazy-cons (lazy-cons 2 (lazy-cons 3 (lazy-nil)))
                                                                (lazy-cons 4 (lazy-nil))))))
                  '(1 2 3 4))))
+
+(ert-deftest lazy-test-second ()
+  (should (= (lazy-second (lazy-range 10 20))
+             11)))
+
+(ert-deftest lazy-test-mapcat ()
+  (should (equal (lazy-into-list (lazy-take 6 (lazy-mapcat (lambda (x) (lazy-range x (+ x 2)))
+                                                       (lazy-range 0 3))))
+                 '(0 1 1 2 2 3))))
+
+(ert-deftest lazy-test-interpose ()
+  (should (equal (lazy-into-list (lazy-interpose :sep (lazy-range 0 3)))
+                 '(0 :sep 1 :sep 2))))
+
+(ert-deftest lazy-test-butlast ()
+  (should (equal (lazy-into-list (lazy-butlast (lazy-range 0 5)))
+                 '(0 1 2 3))))
+
+(ert-deftest lazy-test-drop-last ()
+  (should (equal (lazy-into-list (lazy-drop-last 2 (lazy-range 0 5)))
+                 '(0 1 2))))
+
+(ert-deftest lazy-test-take-last ()
+  (should (equal (lazy-into-list (lazy-take-last 2 (lazy-range 0 5)))
+                 '(3 4))))
+
+(ert-deftest lazy-test-group-by ()
+  (should (equal (sort (lazy-group-by (lambda (x) (mod x 3))
+                                      (lazy-range 0 10))
+                       (lambda (a b) (< (car a) (car b))))
+                 '((0 . (0 3 6 9)) (1 . (1 4 7)) (2 . (2 5 8))))))

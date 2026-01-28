@@ -170,6 +170,10 @@
     (setq n (1- n)))
   (lazy-car stream))
 
+(defun lazy-second (stream)
+  "Return the second element of STREAM."
+  (lazy-car (lazy-cdr stream)))
+
 (defun lazy-length (stream)
   "Return the length of STREAM."
   (if (null stream)
@@ -264,6 +268,34 @@
        (lazy-cons (lazy-car stream)
                   (lazy-cdr stream))))))
 
+(defun lazy-butlast (stream)
+  "Return STREAM without the last element."
+  (lazy
+   (if (lazy-null stream)
+       (lazy-nil)
+     (let ((rest (lazy-cdr stream)))
+       (if (lazy-null rest)
+           (lazy-nil)
+         (lazy-cons (lazy-car stream)
+                   (lazy-butlast rest)))))))
+
+(defun lazy-drop-last (n stream)
+  "Drop the last N elements from STREAM."
+  (lazy
+   (let ((ahead (lazy-drop n stream)))
+     (cl-labels ((drop-helper (s a)
+                   (if (lazy-null a)
+                       (lazy-nil)
+                     (lazy-cons (lazy-car s)
+                               (drop-helper (lazy-cdr s)
+                                           (lazy-cdr a))))))
+       (drop-helper stream ahead)))))
+
+(defun lazy-take-last (n stream)
+  "Take the last N elements from STREAM."
+  (let ((all (lazy-into-list stream)))
+    (lazy-from-list (last all n))))
+
 (defun lazy-subseq (start end stream)
   "Return a subsequence of STREAM from START to END."
   (when (or (< start 0) (and end (< end 0)))
@@ -280,6 +312,10 @@
        (lazy-nil)
      (lazy-cons (funcall function (lazy-car stream))
                 (lazy-map function (lazy-cdr stream))))))
+
+(defun lazy-mapcat (function stream)
+  "Apply FUNCTION to each element of STREAM and concatenate results."
+  (lazy-flatten (lazy-map function stream)))
 
 (defun lazy-mapn (function &rest streams)
   "Apply FUNCTION to elements from STREAMS in parallel."
@@ -379,6 +415,19 @@ Return DEFAULT if not found."
                (apply #'lazy-interleave
                       (append (cdr streams)
                               (list (lazy-cdr (car streams)))))))))
+
+(defun lazy-interpose (separator stream)
+  "Insert SEPARATOR between elements of STREAM."
+  (lazy
+   (if (lazy-null stream)
+       (lazy-nil)
+     (let ((first (lazy-car stream))
+           (rest (lazy-cdr stream)))
+       (if (lazy-null rest)
+           (lazy-cons first (lazy-nil))
+         (lazy-cons first
+                   (lazy-cons separator
+                             (lazy-interpose separator rest))))))))
 
 (defun lazy-cycle (stream)
   "Repeat STREAM infinitely."
@@ -505,6 +554,20 @@ Use FUNCTION and INITIAL-VALUE for the reduction."
        (lazy-cons (lazy-into-list run)
                  (lazy-partition-by function
                                    (lazy-drop (lazy-length run) stream)))))))
+
+(defun lazy-group-by (function stream)
+  "Group elements of STREAM by the result of FUNCTION.
+Return an alist of (key . list-of-elements)."
+  (let ((groups (make-hash-table :test 'equal)))
+    (lazy-dostream (elt stream)
+      (let* ((key (funcall function elt))
+             (existing (gethash key groups)))
+        (puthash key (cons elt existing) groups)))
+    (let (result)
+      (maphash (lambda (k v)
+                 (push (cons k (reverse v)) result))
+               groups)
+      result)))
 
 (defun lazy-flatten (stream)
   "Flatten one level of nesting in STREAM."
