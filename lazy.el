@@ -218,16 +218,6 @@
       (push elt list))
     (nreverse list)))
 
-(defun lazy-range (&optional start end step)
-  "Create a lazy stream of numbers from START to END by STEP."
-  (unless start (setq start 0))
-  (and end (> start end) (setq end start))
-  (unless step (setq step 1))
-  (lazy
-   (if (and end (= start end))
-       (lazy-nil)
-     (lazy-cons start (lazy-range (+ start step) end step)))))
-
 (defun lazy-take (stream n)
   "Take the first N elements from STREAM."
   (when (< n 0) (setq n 0))
@@ -340,26 +330,6 @@ Return DEFAULT if not found."
       (when (funcall pred elt)
         (throw 'lazy--break elt)))
     default))
-
-(defun lazy--sieve (stream)
-  "Sieve of Eratosthenes for STREAM."
-  (lazy
-   (lazy-cons (lazy-car stream)
-              (lazy--sieve (lazy-filter (lambda (x)
-                                          (/= 0 (% x (lazy-car stream))))
-                                        (lazy-cdr stream))))))
-
-(defun lazy-primes ()
-  "Return an infinite lazy stream of prime numbers."
-  (lazy--sieve (lazy-range 2)))
-
-(defun lazy-fibonacci ()
-  "Return an infinite lazy stream of Fibonacci numbers."
-  (lazy
-   (cl-labels ((rec (a b)
-                 (lazy-cons (+ a b)
-                            (rec b (+ a b)))))
-     (lazy-cons 0 (lazy-cons 1 (rec 0 1))))))
 
 ;; `cl-loop' support
 ;;
