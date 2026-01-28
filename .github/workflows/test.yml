@@ -20,9 +20,9 @@ jobs:
           - '30.1'
           - snapshot
     steps:
+      - uses: actions/checkout@v4
       - uses: purcell/setup-emacs@master
         with:
           version: ${{ matrix.emacs_version }}
-      - uses: actions/checkout@v4
       - run: make test
       - run: make compile
