@@ -428,7 +428,8 @@ Return DEFAULT if not found."
                               (lazy-cdr stream))))))))
 
 (defun lazy-reductions (function initial-value stream)
-  "Return a stream of successive reductions of STREAM with FUNCTION and INITIAL-VALUE."
+  "Return a stream of successive reductions of STREAM.
+Use FUNCTION and INITIAL-VALUE for the reduction."
   (lazy
    (if (lazy-null stream)
        (lazy-cons initial-value (lazy-nil))
@@ -555,6 +556,97 @@ Return DEFAULT if not found."
                   cl--loop-args))))
 
 (put 'lazy-by 'cl-loop-for-handler 'lazy--handle-loop-for)
+
+
+;;;
+;;; Sequence generators
+
+(defun lazy-range (&optional start end step)
+  "Create a lazy stream of numbers from START to END by STEP."
+  (unless start (setq start 0))
+  (and end (> start end) (setq end start))
+  (unless step (setq step 1))
+  (lazy
+   (if (and end (= start end))
+       (lazy-nil)
+     (lazy-cons start (lazy-range (+ start step) end step)))))
+
+(defun lazy--sieve (stream)
+  "Sieve of Eratosthenes for STREAM."
+  (lazy
+   (lazy-cons (lazy-car stream)
+              (lazy--sieve (lazy-filter (lambda (x)
+                                          (/= 0 (% x (lazy-car stream))))
+                                        (lazy-cdr stream))))))
+
+(defun lazy-primes ()
+  "Return an infinite lazy stream of prime numbers."
+  (lazy--sieve (lazy-range 2)))
+
+(defun lazy-fibonacci ()
+  "Return an infinite lazy stream of Fibonacci numbers."
+  (lazy
+   (cl-labels ((rec (a b)
+                 (lazy-cons (+ a b)
+                            (rec b (+ a b)))))
+     (lazy-cons 0 (lazy-cons 1 (rec 0 1))))))
+
+(defun lazy-from-list (list)
+  "Convert LIST to a lazy stream."
+  (if (null list)
+      (lazy-nil)
+    (lazy-cons (car list)
+               (lazy-from-list (cdr list)))))
+
+(defun lazy-unfold (function seed)
+  "Return an infinite lazy stream using FUNCTION and SEED.
+FUNCTION takes a seed and returns (value . next-seed) or nil to stop."
+  (lazy
+   (let ((result (funcall function seed)))
+     (if (null result)
+         (lazy-nil)
+       (lazy-cons (car result)
+                 (lazy-unfold function (cdr result)))))))
+
+(defun lazy-random (&optional limit)
+  "Return an infinite lazy stream of random numbers.
+If LIMIT is provided, returns random integers in [0, LIMIT).
+Otherwise returns random floats in [0.0, 1.0)."
+  (if limit
+      (lazy-repeatedly (lambda () (random limit)))
+    (lazy-repeatedly (lambda () (/ (float (random 1000000)) 1000000.0)))))
+
+(defun lazy-powers (base &optional start)
+  "Return an infinite lazy stream of powers of BASE.
+START defaults to 0, so the stream is: BASE^0, BASE^1, BASE^2, ..."
+  (lazy-iterate (lambda (x) (* x base))
+                (expt base (or start 0))))
+
+(defun lazy-lines (file)
+  "Return a lazy stream of lines from FILE."
+  (let ((buffer (find-file-noselect file)))
+    (lazy-unfold
+     (lambda (buf)
+       (with-current-buffer buf
+         (unless (eobp)
+           (let ((line (buffer-substring-no-properties
+                       (line-beginning-position)
+                       (line-end-position))))
+             (forward-line 1)
+             (cons line buf)))))
+     buffer)))
+
+(defun lazy-from-source (pred source)
+  "Return a lazy stream from SOURCE while PRED hold.
+SOURCE can be a list, vector, or string."
+  (cond
+   ((listp source)
+    (lazy-take-while pred (lazy-from-list source)))
+   ((vectorp source)
+    (lazy-take-while pred (lazy-from-list (append source nil))))
+   ((stringp source)
+    (lazy-take-while pred (lazy-from-list (string-to-list source))))
+   (t (error "Unsupported source type"))))
 
 (provide 'lazy)
 ;;; lazy.el ends here
