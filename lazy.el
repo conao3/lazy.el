@@ -38,20 +38,30 @@
 
 ;;; Primitives
 
-(defun lz-box (x) (list x))
-(defalias 'lz-unbox 'car)
-(defalias 'lz-setbox 'setcar)
+(defun lz-box (x)
+  "Box X into a mutable container."
+  (list x))
+
+(defalias 'lz-unbox 'car
+  "Unbox a value from its container.")
+
+(defalias 'lz-setbox 'setcar
+  "Set the value in a boxed container.")
 
 (defmacro lz-lazy (exp)
+  "Create a lazy promise that will evaluate EXP when forced."
   `(lz-box (cons 'lz-lazy (lambda () ,exp))))
 
 (defsubst lz-eager (x)
+  "Create an eager promise wrapping value X."
   (lz-box (cons 'lz-eager x)))
 
 (defmacro lz-delay (exp)
+  "Delay evaluation of EXP until forced."
   `(lz-lazy (lz-eager ,exp)))
 
 (defun lz-force (promise)
+  "Force evaluation of PROMISE and return its value."
   (while (let ((content (lz-unbox promise)))
            (cl-case (car content)
              (lz-eager (setq promise (cdr content))
@@ -111,26 +121,39 @@
 ;;; Stream functions
 
 (defmacro lz-cons (first rest)
+  "Construct a lazy stream with FIRST element and REST stream."
   `(lz-delay (cons ,first ,rest)))
 
 (defsubst lz-nil ()
+  "Return an empty stream."
   (lz-delay nil))
 
 (defsubst lz-null (stream)
+  "Return t if STREAM is empty."
   (null (lz-force stream)))
 
 (defsubst lz-car (stream)
+  "Return the first element of STREAM."
   (car (lz-force stream)))
 
 (defsubst lz-cdr (stream)
+  "Return the rest of STREAM after the first element."
   (cdr (lz-force stream)))
 
-(defalias 'lz-empty 'lz-nil)
-(defalias 'lz-empty-p 'lz-null)
-(defalias 'lz-first 'lz-car)
-(defalias 'lz-rest 'lz-cdr)
+(defalias 'lz-empty 'lz-nil
+  "Alias for `lz-nil'.")
+
+(defalias 'lz-empty-p 'lz-null
+  "Alias for `lz-null'.")
+
+(defalias 'lz-first 'lz-car
+  "Alias for `lz-car'.")
+
+(defalias 'lz-rest 'lz-cdr
+  "Alias for `lz-cdr'.")
 
 (defun lz-append (&rest streams)
+  "Append STREAMS into a single lazy stream."
   (if (null streams)
       (lz-nil)
     (lz-lazy
@@ -144,6 +167,7 @@
                     (lz-cdr first))))))))
 
 (defmacro lz-pop (stream)
+  "Pop and return the first element of STREAM, modifying STREAM."
   (unless (symbolp stream)
     (error "STREAM must be a symbol"))
   `(prog1
@@ -151,12 +175,14 @@
      (setq ,stream (lz-cdr ,stream))))
 
 (defun lz-elt (stream n)
+  "Return the Nth element of STREAM (0-indexed)."
   (while (> n 0)
     (setq stream (lz-cdr stream))
     (setq n (1- n)))
   (lz-car stream))
 
 (defun lz-length (stream)
+  "Return the length of STREAM."
   (let ((len 0))
     (while (not (lz-null stream))
       (setq len (1+ len)
@@ -164,31 +190,37 @@
     len))
 
 (defun lz-stream-p (stream)
+  "Return t if STREAM is a lazy stream."
   (and (consp stream)
        (consp (car stream))
        (memq (caar stream) '(lz-lazy lz-eager))
        t))
 
 (defun lz-do (function stream)
+  "Apply FUNCTION to each element of STREAM for side effects."
   (while (not (lz-null stream))
     (funcall function (lz-car stream))
     (setq stream (lz-cdr stream))))
 
-(defalias 'lz-each #'lz-do)
+(defalias 'lz-each #'lz-do
+  "Alias for `lz-do'.")
 
 (defmacro lz-dostream (spec &rest body)
+  "Iterate over STREAM in SPEC, executing BODY for each element."
   (declare (indent 1))
   `(lz-do (lambda (,(car spec))
             ,@body)
           ,(cadr spec)))
 
 (defun lz-into-list (stream)
+  "Convert STREAM into a list."
   (let (list)
     (lz-dostream (elt stream)
       (push elt list))
     (nreverse list)))
 
 (defun lz-range (&optional start end step)
+  "Create a lazy stream of numbers from START to END by STEP."
   (unless start (setq start 0))
   (and end (> start end) (setq end start))
   (unless step (setq step 1))
@@ -198,6 +230,7 @@
      (lz-cons start (lz-range (+ start step) end step)))))
 
 (defun lz-take (stream n)
+  "Take the first N elements from STREAM."
   (when (< n 0) (setq n 0))
   (lz-lazy
    (if (or (zerop n)
@@ -207,6 +240,7 @@
               (lz-take (lz-cdr stream) (1- n))))))
 
 (defun lz-drop (stream n)
+  "Drop the first N elements from STREAM and return the rest."
   (when (< n 0) (setq n 0))
   (lz-lazy
    (progn
@@ -219,6 +253,7 @@
        (lz-cons (lz-car stream) (lz-cdr stream))))))
 
 (defun lz-take-while (pred stream)
+  "Take elements from STREAM while PRED hold."
   (lz-lazy
    (if (not (funcall pred (lz-car stream)))
        (lz-nil)
@@ -226,6 +261,7 @@
               (lz-take-while pred (lz-cdr stream))))))
 
 (defun lz-drop-while (pred stream)
+  "Drop elements from STREAM while PRED hold."
   (lz-lazy
    (progn
      (while (not (or (lz-null stream)
@@ -236,14 +272,16 @@
                 (lz-cdr stream))))))
 
 (defun lz-subseq (stream start &optional end)
+  "Return a subsequence of STREAM from START to END."
   (when (or (< start 0) (and end (< end 0)))
-    (error "lz-subseq: only non-negative indexes allowed for streams"))
+    (error "Lz-subseq: only non-negative indexes allowed for streams"))
   (let ((stream-from-start (lz-drop stream start)))
     (if end
         (lz-take stream-from-start (- end start))
       stream-from-start)))
 
 (defun lz-map (function stream)
+  "Apply FUNCTION to each element of STREAM, returning a new stream."
   (lz-lazy
    (if (lz-null stream)
        (lz-nil)
@@ -251,6 +289,7 @@
               (lz-map function (lz-cdr stream))))))
 
 (defun lz-mapn (function stream &rest streams)
+  "Apply FUNCTION to elements from STREAM and STREAMS in parallel."
   (setq streams (cons stream streams))
   (lz-lazy
    (if (not (cl-every (lambda (x) (not (lz-null x)))
@@ -260,6 +299,7 @@
               (apply #'lz-mapn function (mapcar #'lz-cdr streams))))))
 
 (defun lz-filter (pred stream)
+  "Filter STREAM to elements where PRED hold."
   (lz-lazy
    (progn
      (while (not (or (lz-null stream)
@@ -271,10 +311,12 @@
                 (lz-filter pred (lz-cdr stream)))))))
 
 (defun lz-remove (pred stream)
+  "Remove elements from STREAM where PRED hold."
   (lz-filter (lambda (elt) (not (funcall pred elt)))
              stream))
 
 (defun lz-reduce (function stream initial-value)
+  "Reduce STREAM using FUNCTION with INITIAL-VALUE as accumulator."
   (if (lz-null stream)
       initial-value
     (let ((acc initial-value))
@@ -283,6 +325,7 @@
       acc)))
 
 (defun lz-reduce-while (pred function stream initial-value)
+  "Reduce STREAM with FUNCTION while PRED hold."
   (if (lz-null stream)
       initial-value
     (let ((acc initial-value))
@@ -294,6 +337,8 @@
       acc)))
 
 (defun lz-find (pred stream &optional default)
+  "Find the first element in STREAM where PRED hold.
+Return DEFAULT if not found."
   (catch 'lz--break
     (lz-dostream (elt stream)
       (when (funcall pred elt)
@@ -301,7 +346,7 @@
     default))
 
 (defun lz--sieve (stream)
-  "Sieve of Eratosthenes"
+  "Sieve of Eratosthenes for STREAM."
   (lz-lazy
    (lz-cons (lz-car stream)
             (lz--sieve (lz-filter (lambda (x)
@@ -309,9 +354,11 @@
                                   (lz-cdr stream))))))
 
 (defun lz-primes ()
+  "Return an infinite lazy stream of prime numbers."
   (lz--sieve (lz-range 2)))
 
 (defun lz-fibonacci ()
+  "Return an infinite lazy stream of Fibonacci numbers."
   (lz-lazy
    (cl-labels ((rec (a b)
                     (lz-cons (+ a b)
@@ -326,18 +373,20 @@
 (defvar cl--loop-args)
 
 (defmacro lz--advance-for (conscell)
+  "Advance CONSCELL to the next element in the lazy stream."
   `(progn
      (setcar ,conscell (lz-car (cdr ,conscell)))
      (setcdr ,conscell (lz-cdr (cdr ,conscell)))
      ,conscell))
 
 (defmacro lz--initialize-for (stream)
+  "Initialize a cell for iterating over lazy STREAM."
   (let ((cs (gensym "lz--loop-temp")))
     `(let ((,cs (cons nil ,stream)))
        (lz--advance-for ,cs))))
 
 (defun lz--handle-loop-for (var)
-  "Support `lazy-by' in `cl-loop'."
+  "Support `lazy-by' in `cl-loop' for VAR."
   (let ((stream (pop cl--loop-args)))
     (setf cl--loop-args
           (append `(for ,var in (lz--initialize-for ,stream)
