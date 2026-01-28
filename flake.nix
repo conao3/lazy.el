@@ -30,7 +30,13 @@
             snapshot = emacs-ci-pkgs.emacs-snapshot;
           };
 
-          makeTest =
+        in
+        {
+          treefmt = {
+            programs.nixfmt.enable = true;
+          };
+
+          checks = pkgs.lib.mapAttrs (
             version: emacs:
             pkgs.runCommand "lazy-el-test-${version}"
               {
@@ -46,14 +52,8 @@
                 make test
                 make compile
                 touch $out
-              '';
-        in
-        {
-          treefmt = {
-            programs.nixfmt.enable = true;
-          };
-
-          checks = pkgs.lib.mapAttrs (version: emacs: makeTest version emacs) emacsVersions;
+              ''
+          ) emacsVersions;
 
           devShells.default = pkgs.mkShell {
             packages = [
