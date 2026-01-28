@@ -11,7 +11,9 @@ compile:
 		--eval "(setq byte-compile-warnings t)" \
 		--eval "(require 'checkdoc)" \
 		--eval "(checkdoc-file \"lazy.el\")" \
-		-f batch-byte-compile lazy.el
+		--eval "(require 'package-lint)" \
+		-f package-lint-batch-and-exit lazy.el
+	$(EMACS) $(LOAD_PATH) --batch -f batch-byte-compile lazy.el
 
 .PHONY: clean
 clean:

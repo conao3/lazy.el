@@ -22,14 +22,20 @@
         { system, ... }:
         let
           emacs-ci-pkgs = inputs.emacs-ci.packages.${system};
+          wrapEmacs = pkgs: emacs:
+            (pkgs.emacsPackagesFor emacs).emacsWithPackages (epkgs: [
+              epkgs.package-lint
+            ]);
           overlay = final: prev: {
-            emacs = emacs-ci-pkgs.emacs-30-1;
+            emacs = wrapEmacs final emacs-ci-pkgs.emacs-30-1;
           };
           pkgs = import inputs.nixpkgs {
             inherit system;
             overlays = [ overlay ];
           };
-          emacsVersions = {
+          emacsVersions = pkgs.lib.mapAttrs (
+            version: emacs: wrapEmacs pkgs emacs
+          ) {
             "27-2" = emacs-ci-pkgs.emacs-27-2;
             "28-2" = emacs-ci-pkgs.emacs-28-2;
             "29-4" = emacs-ci-pkgs.emacs-29-4;
