@@ -154,17 +154,7 @@
 
 (defun lazy-append (&rest streams)
   "Append STREAMS into a single lazy stream."
-  (if (null streams)
-      (lazy-nil)
-    (lazy
-     (let ((first (pop streams)))
-       (while (and (lazy-null first) streams)
-         (setq first (pop streams)))
-       (if (lazy-null first)
-           (lazy-nil)
-         (lazy-cons (lazy-car first)
-                    (if streams (apply #'lazy-append (lazy-cdr first) streams)
-                      (lazy-cdr first))))))))
+  (lazy-concat (lazy-from-list streams)))
 
 (defmacro lazy-pop (stream)
   "Pop and return the first element of STREAM, modifying STREAM."
@@ -458,11 +448,7 @@ Use FUNCTION and INITIAL-VALUE for the reduction."
 
 (defun lazy-map-indexed (function stream)
   "Apply FUNCTION to index and each element of STREAM."
-  (let ((index -1))
-    (lazy-map (lambda (elt)
-               (setq index (1+ index))
-               (funcall function index elt))
-             stream)))
+  (lazy-mapn function (lazy-range) stream))
 
 (defun lazy-take-nth (n stream)
   "Take every Nth element from STREAM."
@@ -484,11 +470,7 @@ Use FUNCTION and INITIAL-VALUE for the reduction."
 
 (defun lazy-every (pred stream)
   "Return t if PRED hold for all elements of STREAM."
-  (catch 'lazy--break
-    (lazy-dostream (elt stream)
-      (unless (funcall pred elt)
-        (throw 'lazy--break nil)))
-    t))
+  (not (lazy-some (lambda (x) (not (funcall pred x))) stream)))
 
 (defun lazy-keep (function stream)
   "Apply FUNCTION to elements of STREAM and keep non-nil results."
