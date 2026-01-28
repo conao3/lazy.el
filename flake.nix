@@ -19,9 +19,16 @@
       ];
 
       perSystem =
-        { pkgs, system, ... }:
+        { system, ... }:
         let
           emacs-ci-pkgs = inputs.emacs-ci.packages.${system};
+          overlay = final: prev: {
+            emacs = emacs-ci-pkgs.emacs-30-1;
+          };
+          pkgs = import inputs.nixpkgs {
+            inherit system;
+            overlays = [ overlay ];
+          };
           emacsVersions = {
             "27-2" = emacs-ci-pkgs.emacs-27-2;
             "28-2" = emacs-ci-pkgs.emacs-28-2;
@@ -29,7 +36,6 @@
             "30-1" = emacs-ci-pkgs.emacs-30-1;
             snapshot = emacs-ci-pkgs.emacs-snapshot;
           };
-
         in
         {
           treefmt = {
@@ -40,10 +46,11 @@
             version: emacs:
             pkgs.runCommand "lazy-el-test-${version}"
               {
-                buildInputs = [
-                  emacs
-                  pkgs.gnumake
-                ];
+                buildInputs =
+                  (with pkgs; [
+                    gnumake
+                  ])
+                  ++ [ emacs ];
               }
               ''
                 cp -r ${./.} source
@@ -56,9 +63,9 @@
           ) emacsVersions;
 
           devShells.default = pkgs.mkShell {
-            packages = [
-              emacsVersions."30-1"
-              pkgs.gnumake
+            packages = with pkgs; [
+              emacs
+              gnumake
             ];
           };
         };
