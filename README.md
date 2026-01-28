@@ -20,10 +20,10 @@ lazy.el provides lazy evaluation for Emacs Lisp based on SRFI 45. It implements 
 
 ```elisp
 ;; Create an infinite sequence of natural numbers
-(setq naturals (lazy-range))
+(setq nums (lazy-range))
 
 ;; Take first 5 elements
-(lazy-into-list (lazy-take 5 naturals))
+(lazy-into-list (lazy-take 5 nums))
 ;;=> (0 1 2 3 4)
 
 ;; Map and filter
