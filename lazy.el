@@ -213,9 +213,6 @@
     (funcall function (lazy-car stream))
     (setq stream (lazy-cdr stream))))
 
-(defalias 'lazy-each #'lazy-do
-  "Alias for `lazy-do'.")
-
 (defmacro lazy-dostream (spec &rest body)
   "Iterate over STREAM in SPEC, executing BODY for each element."
   (declare (indent 1))
