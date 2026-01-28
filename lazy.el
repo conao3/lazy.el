@@ -154,7 +154,7 @@
 
 (defun lazy-append (&rest streams)
   "Append STREAMS into a single lazy stream."
-  (lazy-concat (lazy-from-list streams)))
+  (lazy-concat (lazy-from-seq streams)))
 
 (defmacro lazy-pop (stream)
   "Pop and return the first element of STREAM, modifying STREAM."
@@ -294,7 +294,7 @@
 (defun lazy-take-last (n stream)
   "Take the last N elements from STREAM."
   (let ((all (lazy-into-list stream)))
-    (lazy-from-list (last all n))))
+    (lazy-from-seq (last all n))))
 
 (defun lazy-subseq (start end stream)
   "Return a subsequence of STREAM from START to END."
@@ -643,12 +643,29 @@ Return an alist of (key . list-of-elements)."
                             (rec b (+ a b)))))
      (lazy-cons 0 (lazy-cons 1 (rec 0 1))))))
 
-(defun lazy-from-list (list)
-  "Convert LIST to a lazy stream."
-  (if (null list)
-      (lazy-nil)
-    (lazy-cons (car list)
-               (lazy-from-list (cdr list)))))
+(defun lazy-from-seq (seq &optional pred)
+  "Convert SEQ to a lazy stream.
+SEQ can be any sequence type (list, vector, string, etc.).
+If PRED is provided, take elements while PRED holds."
+  (let ((stream (cl-typecase seq
+                  (list
+                   (if (null seq)
+                       (lazy-nil)
+                     (lazy-cons (car seq)
+                               (lazy-from-seq (cdr seq)))))
+                  (t
+                   (let ((len (length seq))
+                         (idx 0))
+                     (lazy
+                      (cl-labels ((helper (i)
+                                    (if (>= i len)
+                                        (lazy-nil)
+                                      (lazy-cons (elt seq i)
+                                                (helper (1+ i))))))
+                        (helper idx))))))))
+    (if pred
+        (lazy-take-while pred stream)
+      stream)))
 
 (defun lazy-unfold (function seed)
   "Return an infinite lazy stream using FUNCTION and SEED.
@@ -688,17 +705,6 @@ START defaults to 0, so the stream is: BASE^0, BASE^1, BASE^2, ..."
              (cons line buf)))))
      buffer)))
 
-(defun lazy-from-source (pred source)
-  "Return a lazy stream from SOURCE while PRED hold.
-SOURCE can be a list, vector, or string."
-  (cond
-   ((listp source)
-    (lazy-take-while pred (lazy-from-list source)))
-   ((vectorp source)
-    (lazy-take-while pred (lazy-from-list (append source nil))))
-   ((stringp source)
-    (lazy-take-while pred (lazy-from-list (string-to-list source))))
-   (t (error "Unsupported source type"))))
 
 (provide 'lazy)
 ;;; lazy.el ends here
