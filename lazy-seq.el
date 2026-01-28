@@ -61,5 +61,78 @@
                             (rec b (+ a b)))))
      (lazy-cons 0 (lazy-cons 1 (rec 0 1))))))
 
+(defun lazy-seq-naturals (&optional start)
+  "Return an infinite lazy stream of natural numbers starting from START.
+If START is not provided, starts from 1."
+  (lazy-seq-range (or start 1)))
+
+(defun lazy-seq-from-list (list)
+  "Convert LIST to a lazy stream."
+  (if (null list)
+      (lazy-nil)
+    (lazy-cons (car list)
+               (lazy-seq-from-list (cdr list)))))
+
+(defun lazy-seq-unfold (function seed)
+  "Return an infinite lazy stream using FUNCTION and SEED.
+FUNCTION takes a seed and returns (value . next-seed) or nil to stop."
+  (lazy
+   (let ((result (funcall function seed)))
+     (if (null result)
+         (lazy-nil)
+       (lazy-cons (car result)
+                 (lazy-seq-unfold function (cdr result)))))))
+
+(defun lazy-seq-random (&optional limit)
+  "Return an infinite lazy stream of random numbers.
+If LIMIT is provided, returns random integers in [0, LIMIT).
+Otherwise returns random floats in [0.0, 1.0)."
+  (if limit
+      (lazy-repeatedly (lambda () (random limit)))
+    (lazy-repeatedly (lambda () (/ (float (random 1000000)) 1000000.0)))))
+
+(defun lazy-seq-powers (base &optional start)
+  "Return an infinite lazy stream of powers of BASE.
+START defaults to 0, so the stream is: BASE^0, BASE^1, BASE^2, ..."
+  (lazy-iterate (lambda (x) (* x base))
+                (expt base (or start 0))))
+
+(defun lazy-seq-lines (file)
+  "Return a lazy stream of lines from FILE."
+  (let ((buffer (find-file-noselect file)))
+    (lazy-seq-unfold
+     (lambda (buf)
+       (with-current-buffer buf
+         (unless (eobp)
+           (let ((line (buffer-substring-no-properties
+                       (line-beginning-position)
+                       (line-end-position))))
+             (forward-line 1)
+             (cons line buf)))))
+     buffer)))
+
+(defun lazy-seq-repeat (n &rest values)
+  "Return a lazy stream that repeats VALUES exactly N times.
+If N is nil, repeats infinitely."
+  (if (null n)
+      (lazy-cycle (lazy-seq-from-list values))
+    (lazy
+     (if (<= n 0)
+         (lazy-nil)
+       (lazy-append (lazy-seq-from-list values)
+                   (apply #'lazy-seq-repeat (1- n) values))))))
+
+(defun lazy-seq-take-while (pred source)
+  "Return a lazy stream from SOURCE while PRED hold.
+SOURCE can be a list, vector, or string."
+  (cond
+   ((listp source)
+    (lazy-take-while pred (lazy-seq-from-list source)))
+   ((vectorp source)
+    (lazy-take-while pred (lazy-seq-from-list (append source nil))))
+   ((stringp source)
+    (lazy-take-while pred (lazy-seq-from-list (string-to-list source))))
+   (t (error "Unsupported source type"))))
+
 (provide 'lazy-seq)
 ;;; lazy-seq.el ends here
