@@ -48,17 +48,17 @@
 (defalias 'lazy-setbox 'setcar
   "Set the value in a boxed container.")
 
-(defmacro lazy (exp)
-  "Create a lazy promise that will evaluate EXP when forced."
-  `(lazy-box (cons 'lazy (lambda () ,exp))))
+(defmacro lazy (&rest body)
+  "Create a lazy promise that will evaluate BODY when forced."
+  `(lazy-box (cons 'lazy (lambda () ,@body))))
 
 (defsubst lazy-eager (x)
   "Create an eager promise wrapping value X."
   (lazy-box (cons 'lazy-eager x)))
 
-(defmacro lazy-delay (exp)
-  "Delay evaluation of EXP until forced."
-  `(lazy (lazy-eager ,exp)))
+(defmacro lazy-delay (&rest body)
+  "Delay evaluation of BODY until forced."
+  `(lazy (lazy-eager (progn ,@body))))
 
 (defun lazy-force (promise)
   "Force evaluation of PROMISE and return its value."
@@ -170,8 +170,7 @@
   "Pop and return the first element of STREAM, modifying STREAM."
   (unless (symbolp stream)
     (error "STREAM must be a symbol"))
-  `(prog1
-       (lazy-car ,stream)
+  `(prog1 (lazy-car ,stream)
      (setq ,stream (lazy-cdr ,stream))))
 
 (defun lazy-elt (stream n)
@@ -243,14 +242,13 @@
   "Drop the first N elements from STREAM and return the rest."
   (when (< n 0) (setq n 0))
   (lazy
-   (progn
-     (while (not (or (lazy-null stream)
-                     (zerop n)))
-       (setq n (1- n))
-       (setq stream (lazy-cdr stream)))
-     (if (lazy-null stream)
-         (lazy-nil)
-       (lazy-cons (lazy-car stream) (lazy-cdr stream))))))
+   (while (not (or (lazy-null stream)
+                   (zerop n)))
+     (setq n (1- n))
+     (setq stream (lazy-cdr stream)))
+   (if (lazy-null stream)
+       (lazy-nil)
+     (lazy-cons (lazy-car stream) (lazy-cdr stream)))))
 
 (defun lazy-take-while (pred stream)
   "Take elements from STREAM while PRED hold."
@@ -263,13 +261,12 @@
 (defun lazy-drop-while (pred stream)
   "Drop elements from STREAM while PRED hold."
   (lazy
-   (progn
-     (while (not (or (lazy-null stream)
-                     (funcall pred (lazy-car stream))))
-       (setq stream (lazy-cdr stream)))
-     (unless (lazy-null stream)
-       (lazy-cons (lazy-car stream)
-                  (lazy-cdr stream))))))
+   (while (not (or (lazy-null stream)
+                   (funcall pred (lazy-car stream))))
+     (setq stream (lazy-cdr stream)))
+   (unless (lazy-null stream)
+     (lazy-cons (lazy-car stream)
+                (lazy-cdr stream)))))
 
 (defun lazy-subseq (stream start &optional end)
   "Return a subsequence of STREAM from START to END."
@@ -301,14 +298,13 @@
 (defun lazy-filter (pred stream)
   "Filter STREAM to elements where PRED hold."
   (lazy
-   (progn
-     (while (not (or (lazy-null stream)
-                     (funcall pred (lazy-car stream))))
-       (setq stream (lazy-cdr stream)))
-     (if (lazy-null stream)
-         (lazy-nil)
-       (lazy-cons (lazy-car stream)
-                  (lazy-filter pred (lazy-cdr stream)))))))
+   (while (not (or (lazy-null stream)
+                   (funcall pred (lazy-car stream))))
+     (setq stream (lazy-cdr stream)))
+   (if (lazy-null stream)
+       (lazy-nil)
+     (lazy-cons (lazy-car stream)
+                (lazy-filter pred (lazy-cdr stream))))))
 
 (defun lazy-remove (pred stream)
   "Remove elements from STREAM where PRED hold."
