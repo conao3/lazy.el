@@ -190,6 +190,16 @@
               stream (lazy-cdr stream)))
       len)))
 
+(defun lazy-bounded-length (n stream)
+  "Return N if STREAM has at least N items, else the count of STREAM."
+  (if (null stream)
+      0
+    (let ((len 0))
+      (while (and (< len n) (not (lazy-null stream)))
+        (setq len (1+ len)
+              stream (lazy-cdr stream)))
+      len)))
+
 (defun lazy-stream-p (stream)
   "Return t if STREAM is a lazy stream."
   (and (consp stream)

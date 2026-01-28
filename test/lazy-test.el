@@ -33,6 +33,14 @@
   (should (equal (let ((r (lazy-range))) (list (lazy-pop r) (lazy-pop r) (lazy-pop r)))
                  '(0 1 2))))
 
+(ert-deftest lazy-test-bounded-length ()
+  (should (= (lazy-bounded-length 10 (lazy-range 0 5))
+             5))
+  (should (= (lazy-bounded-length 10 (lazy-range 0 15))
+             10))
+  (should (= (lazy-bounded-length 5 (lazy-range))
+             5)))
+
 (ert-deftest lazy-test-subseq ()
   (should (equal (lazy-into-list (lazy-subseq 5 10 (lazy-range)))
                  '(5 6 7 8 9))))
