@@ -14,7 +14,7 @@ https://qiita.com/chuntaro/items/f0d82f32cf216d4fd3dc (Japanese)
 
 ## Overview
 
-lazy.el provides lazy evaluation for Emacs Lisp based on SRFI 45. It implements lazy streams (also called lazy sequences) that compute their elements on demand.
+lazy.el provides lazy evaluation for Emacs Lisp based on SRFI 45. It implements lazy sequences that compute their elements on demand.
 
 ### Basic Example
 
@@ -72,20 +72,20 @@ lazy.el uses Clojure-style data-last argument order, making it perfect for dash.
 
 ### Key Concepts
 
-- **Lazy streams** are only computed when needed
-- **Infinite streams** are possible (e.g., `lazy-range`, `lazy-repeat`)
+- **Lazy sequences** are only computed when needed
+- **Infinite sequences** are possible (e.g., `lazy-range`, `lazy-repeat`)
 - **Memoization** ensures each element is computed only once
 - **Clojure-style API** with data-last argument order
 
 ## Creating Lazy-sequence
 
-Functions that create lazy streams from various sources.
+Functions that create lazy sequences from various sources.
 
 ### From numbers
 
 #### `(lazy-range &optional start end step)`
 
-Create a lazy stream of numbers from START to END by STEP.
+Create a lazy sequence of numbers from START to END by STEP.
 
 ```elisp
 (lazy-into-list (lazy-range 5))
@@ -106,7 +106,7 @@ Create a lazy stream of numbers from START to END by STEP.
 
 #### `(lazy-primes)`
 
-Return an infinite lazy stream of prime numbers.
+Return an infinite lazy sequence of prime numbers.
 
 ```elisp
 (lazy-into-list (lazy-take 10 (lazy-primes)))
@@ -115,7 +115,7 @@ Return an infinite lazy stream of prime numbers.
 
 #### `(lazy-fibonacci)`
 
-Return an infinite lazy stream of Fibonacci numbers.
+Return an infinite lazy sequence of Fibonacci numbers.
 
 ```elisp
 (lazy-into-list (lazy-take 10 (lazy-fibonacci)))
@@ -124,7 +124,7 @@ Return an infinite lazy stream of Fibonacci numbers.
 
 #### `(lazy-powers base &optional start)`
 
-Return an infinite lazy stream of powers of BASE.
+Return an infinite lazy sequence of powers of BASE.
 
 ```elisp
 (lazy-into-list (lazy-take 5 (lazy-powers 2)))
@@ -138,7 +138,7 @@ Return an infinite lazy stream of powers of BASE.
 
 #### `(lazy-from-seq seq &optional pred)`
 
-Convert SEQ to a lazy stream. SEQ can be any sequence type (list, vector, string, etc.).
+Convert SEQ to a lazy sequence. SEQ can be any sequence type (list, vector, string, etc.).
 If PRED is provided, take elements while PRED holds.
 
 ```elisp
@@ -186,7 +186,7 @@ Create an infinite stream by applying FUNCTION to X repeatedly.
 
 #### `(lazy-unfold function seed)`
 
-Return an infinite lazy stream using FUNCTION and SEED.
+Return an infinite lazy sequence using FUNCTION and SEED.
 FUNCTION takes a seed and returns (value . next-seed) or nil to stop.
 
 ```elisp
@@ -203,7 +203,7 @@ FUNCTION takes a seed and returns (value . next-seed) or nil to stop.
 
 #### `(lazy-random &optional limit)`
 
-Return an infinite lazy stream of random numbers.
+Return an infinite lazy sequence of random numbers.
 If LIMIT is provided, returns random integers in [0, LIMIT).
 Otherwise returns random floats in [0.0, 1.0).
 
@@ -219,7 +219,7 @@ Otherwise returns random floats in [0.0, 1.0).
 
 #### `(lazy-lines file)`
 
-Return a lazy stream of lines from FILE.
+Return a lazy sequence of lines from FILE.
 
 ```elisp
 (lazy-into-list (lazy-take 3 (lazy-lines "/etc/hosts")))
@@ -239,7 +239,7 @@ Repeat STREAM infinitely.
 
 ## Lazy-sequence in, Lazy-sequence out
 
-Functions that transform lazy streams into other lazy streams.
+Functions that transform lazy sequences into other lazy sequences.
 
 ### Taking and dropping elements
 
@@ -438,7 +438,7 @@ Remove consecutive duplicate elements from STREAM.
 
 #### `(lazy-append &rest streams)`
 
-Append STREAMS into a single lazy stream.
+Append STREAMS into a single lazy sequence.
 
 ```elisp
 (lazy-into-list
@@ -537,7 +537,7 @@ Return a stream of successive reductions of STREAM.
 
 ## Lazy-sequence in, value out
 
-Functions that consume lazy streams and return values.
+Functions that consume lazy sequences and return values.
 
 ### Accessing elements
 
@@ -598,7 +598,7 @@ Safe for infinite streams.
 
 #### `(lazy-stream-p stream)`
 
-Return t if STREAM is a lazy stream.
+Return t if STREAM is a lazy sequence.
 
 ```elisp
 (lazy-stream-p (lazy-range))
@@ -789,7 +789,7 @@ Force evaluation of a lazy PROMISE, memoizing the result.
 
 #### `lazy-cons`
 
-Construct a lazy stream with FIRST and REST.
+Construct a lazy sequence with FIRST and REST.
 
 ```elisp
 (setq s (lazy-cons 1 (lazy-cons 2 (lazy-nil))))
@@ -808,7 +808,7 @@ Empty stream and predicate to test for empty stream.
 
 #### `lazy-car`, `lazy-cdr`
 
-Access head and tail of a lazy stream.
+Access head and tail of a lazy sequence.
 
 ```elisp
 (lazy-car (lazy-range))  ; => 0
