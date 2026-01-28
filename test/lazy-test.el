@@ -5,7 +5,8 @@
 
 (require 'lazy)
 
-(setq max-lisp-eval-depth 10000)
+(setq max-lisp-eval-depth 10000
+      max-specpdl-size 10000)
 
 (ert-deftest lz-test-error-check ()
   (should (null (lz-into-list (lz-range 10 5))))

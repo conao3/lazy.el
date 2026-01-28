@@ -12,6 +12,8 @@ https://qiita.com/chuntaro/items/f0d82f32cf216d4fd3dc (Japanese)
 
 # Development
 
+This project uses Nix flakes for reproducible development environments.
+
 ## Setup
 
 Enable binary cache to avoid building Emacs from source:
@@ -25,36 +27,23 @@ Or add to your NixOS configuration: `https://emacs-ci.cachix.org`
 
 ## Usage
 
-Enter the development shell:
+Enter the development shell (Emacs 30-1 by default):
 
 ```bash
-nix-shell
+nix develop
 ```
 
-Test with a different Emacs version:
+Run all tests across all Emacs versions:
 
 ```bash
-nix-shell --argstr emacsVersion 28-2
+nix flake check
 ```
 
-Available versions: 27-2, 28-2, 29-4, 30-1, snapshot
-
-## Update nixpkgs hash
-
-To update the nixpkgs hash in `shell.nix`:
+Format Nix files:
 
 ```bash
-COMMIT=$(curl -sL https://api.github.com/repos/NixOS/nixpkgs/commits/nixpkgs-unstable | grep -m1 '"sha"' | cut -d'"' -f4)
-SHA256=$(nix-prefetch-url --unpack https://github.com/NixOS/nixpkgs/archive/${COMMIT}.tar.gz 2>&1 | tail -1)
-cat <<EOF
-  nixpkgs = fetchTarball {
-    url = "https://github.com/NixOS/nixpkgs/archive/${COMMIT}.tar.gz";
-    sha256 = "${SHA256}";
-  };
-EOF
+nix fmt
 ```
-
-Copy the output and replace the `nixpkgs = fetchTarball { ... };` section in `shell.nix`.
 
 # History
 
