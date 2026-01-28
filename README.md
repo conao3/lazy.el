@@ -12,6 +12,33 @@ https://qiita.com/chuntaro/items/f0d82f32cf216d4fd3dc (Japanese)
 
 # Development
 
+## Setup
+
+Enable binary cache to avoid building Emacs from source:
+
+```bash
+nix-env -iA cachix -f https://cachix.org/api/v1/install
+cachix use emacs-ci
+```
+
+Or add to your NixOS configuration: `https://emacs-ci.cachix.org`
+
+## Usage
+
+Enter the development shell:
+
+```bash
+nix-shell
+```
+
+Test with a different Emacs version:
+
+```bash
+nix-shell --argstr emacsVersion 28-2
+```
+
+Available versions: 27-2, 28-2, 29-4, 30-1, snapshot
+
 ## Update nixpkgs hash
 
 To update the nixpkgs hash in `shell.nix`:
