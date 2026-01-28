@@ -35,11 +35,8 @@
 
 (require 'cl-lib)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Primitives
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Primitives
 
 (defun lz-box (x) (list x))
 (defalias 'lz-unbox 'car)
@@ -71,9 +68,6 @@
 ;; (*) These two lines re-fetch and check the original promise in case
 ;;     the first line of the let* caused it to be forced.  For an example
 ;;     where this happens, see reentrancy test 3 below.
-;; (*) これらの 2 行は、let* の最初の行が force された場合に元の promise を
-;;     再フェッチしてチェックします。これが起こる例については、以下の
-;;     reentrancy test 3 を参照してください。
 ;;
 ;;=========================================================================
 ;; Reentrancy test 3: due to John Shutt
@@ -113,11 +107,8 @@
 ;; (lz-force p)                            ; =>   0
 ;; (funcall get-count)                     ; =>   10
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;; Stream functions
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;; Stream functions
 
 (defmacro lz-cons (first rest)
   `(lz-delay (cons ,first ,rest)))
