@@ -5,7 +5,7 @@
 
 ;; Author: chuntaro <chuntaro@sakura-games.jp>
 ;; Maintainer: conao3 <conao3@gmail.com>
-;; URL: https://github.com/chuntaro/lazy.el
+;; URL: https://github.com/conao3/lazy.el
 ;; Package-Requires: ((emacs "25"))
 ;; Keywords: lisp, lazy
 ;; Version: 0.1.0
