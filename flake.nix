@@ -22,7 +22,8 @@
         { system, ... }:
         let
           emacs-ci-pkgs = inputs.emacs-ci.packages.${system};
-          wrapEmacs = pkgs: emacs:
+          wrapEmacs =
+            pkgs: emacs:
             (pkgs.emacsPackagesFor emacs).emacsWithPackages (epkgs: [
               epkgs.package-lint
             ]);
@@ -33,13 +34,12 @@
             inherit system;
             overlays = [ overlay ];
           };
-          emacsVersions = pkgs.lib.mapAttrs (
-            version: emacs: wrapEmacs pkgs emacs
-          ) {
+          emacsVersions = pkgs.lib.mapAttrs (version: emacs: wrapEmacs pkgs emacs) {
             "27-2" = emacs-ci-pkgs.emacs-27-2;
             "28-2" = emacs-ci-pkgs.emacs-28-2;
             "29-4" = emacs-ci-pkgs.emacs-29-4;
             "30-1" = emacs-ci-pkgs.emacs-30-1;
+            "31-1" = emacs-ci-pkgs.emacs-31-1;
             snapshot = emacs-ci-pkgs.emacs-snapshot;
           };
         in
