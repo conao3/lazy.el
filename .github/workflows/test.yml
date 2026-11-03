@@ -19,8 +19,8 @@ jobs:
           - 31-1
           - snapshot
     steps:
-      - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@v31
+      - uses: actions/checkout@v7.0.1
+      - uses: cachix/install-nix-action@v31.11.3
         with:
           extra_nix_config: |
             extra-substituters = https://cache.nixos.org https://nix-community.cachix.org https://emacs-ci.cachix.org
